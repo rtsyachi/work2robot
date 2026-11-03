@@ -36,7 +36,7 @@
 - 起動：`.venv\Scripts\python -m uvicorn backend.api.app:app --port 8000` と `frontend` で `npm run dev`（http://127.0.0.1:5173）。実画面確認：起動中に `frontend` で `npm run screenshot`
 - Claudeの確認用サーバー（ユーザーの8000/5173とぶつけない）：API を 8001（`--reload`）、`frontend` で `npm run dev:verify`（5174）、確認は `npm run screenshot:verify`。環境変数を付けたコマンドは許可確認が出るため使わない。
 - 動画→観測テキスト（課金あり）：`.venv\Scripts\python scripts\run_observation.py`
-- Claude API 接続確認（少額課金あり）：`.venv\Scripts\python scripts\check_claude_api.py`。キーは `.env` の `ANTHROPIC_API_KEY`（Git管理外）。
+- Claude API 接続確認（少額課金あり）：`.venv\Scripts\python scripts\check_claude_api.py`。キーはリポジトリ直下の `.env` に `ANTHROPIC_API_KEY=...` と書く（Git管理外。ひな形ファイルは置かない）。
 - Claude抽出の実行と評価（課金あり）：`.venv\Scripts\python scripts\run_extraction.py`。保存済み結果の評価のみ：`--latest`。正解データは `eval/`（アプリの入力経路から読まない）。
 - デモ用データの整合性検証は、アプリ完成の証拠ではない。
 - 実装後は必要な実テストコマンドを追加し、実行結果・未実装・未検証を区別して報告する。

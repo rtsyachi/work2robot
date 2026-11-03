@@ -1,7 +1,6 @@
-# 認証情報
+# 認証情報（APIキーはリポジトリ直下の .env に ANTHROPIC_API_KEY=... と書く。Gitには入れない）
 .env
 .env.*
-!.env.example
 CLAUDE.local.md
 .claude/settings.local.json
 
