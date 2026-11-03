@@ -1,0 +1,32 @@
+{
+  "name": "w2r-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "screenshot": "node scripts/screenshot.mjs",
+    "dev:verify": "vite --host 127.0.0.1 --port 5174 --strictPort --mode verify",
+    "screenshot:verify": "node scripts/screenshot.mjs --url=http://127.0.0.1:5174/"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "1.1.4",
+    "@react-three/drei": "9.115.0",
+    "@react-three/fiber": "8.17.10",
+    "@xyflow/react": "12.3.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.160.0",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.3",
+    "playwright-core": "1.48.2",
+    "typescript": "5.6.3",
+    "vite": "5.4.10",
+    "vitest": "2.1.4"
+  }
+}

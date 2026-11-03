@@ -1,0 +1,29 @@
+# 認証情報
+.env
+.env.*
+!.env.example
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+*.py[cod]
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# 一時的な動画・実行出力
+local_media/
+recordings/
+*.log
+
+# IDE/OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

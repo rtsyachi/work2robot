@@ -1,0 +1,71 @@
+{
+  "note": "架空の模擬荷物マスタ（実行器への入力）。動画の解析結果ではない。期待される経路は評価用としてテスト・eval側に置き、このファイルには含めない。dims_m は [幅, 奥行, 高さ]（m）。",
+  "objects": [
+    {
+      "object_id": "A",
+      "description": "底面が広く軽い硬い箱",
+      "attributes": {
+        "material_class": { "value": "rigid", "source": "mock_metadata" },
+        "fragile_content": { "value": false, "source": "mock_metadata" },
+        "base_area_m2": { "value": 0.20, "source": "mock_metadata" },
+        "weight_kg": { "value": 3.0, "source": "mock_metadata" },
+        "dims_m": { "value": [0.50, 0.40, 0.30], "source": "mock_metadata" }
+      }
+    },
+    {
+      "object_id": "B",
+      "description": "小さく重い硬い箱",
+      "attributes": {
+        "material_class": { "value": "rigid", "source": "mock_metadata" },
+        "fragile_content": { "value": false, "source": "mock_metadata" },
+        "base_area_m2": { "value": 0.075, "source": "mock_metadata" },
+        "weight_kg": { "value": 12.0, "source": "mock_metadata" },
+        "dims_m": { "value": [0.30, 0.25, 0.25], "source": "mock_metadata" }
+      }
+    },
+    {
+      "object_id": "C",
+      "description": "ソフトバッグ",
+      "attributes": {
+        "material_class": { "value": "soft", "source": "mock_metadata" },
+        "fragile_content": { "value": false, "source": "mock_metadata" },
+        "base_area_m2": { "value": 0.16, "source": "mock_metadata" },
+        "weight_kg": { "value": 2.0, "source": "mock_metadata" },
+        "dims_m": { "value": [0.45, 0.35, 0.20], "source": "mock_metadata" }
+      }
+    },
+    {
+      "object_id": "D",
+      "description": "「ワレモノ」ラベル付きソフトバッグ",
+      "attributes": {
+        "material_class": { "value": "soft", "source": "mock_metadata" },
+        "fragile_content": { "value": true, "source": "mock_metadata" },
+        "base_area_m2": { "value": 0.12, "source": "mock_metadata" },
+        "weight_kg": { "value": 1.5, "source": "mock_metadata" },
+        "dims_m": { "value": [0.40, 0.30, 0.20], "source": "mock_metadata" }
+      }
+    },
+    {
+      "object_id": "E",
+      "description": "材質が不明な荷物（属性不明ケース）",
+      "attributes": {
+        "material_class": { "value": null, "source": "unknown" },
+        "fragile_content": { "value": false, "source": "mock_metadata" },
+        "base_area_m2": { "value": 0.10, "source": "mock_metadata" },
+        "dims_m": { "value": [0.40, 0.25, 0.20], "source": "mock_metadata" }
+      }
+    }
+  ],
+  "batches": [
+    {
+      "batch_id": "video_batch",
+      "label": "動画と同じ荷物（A〜D）",
+      "object_ids": ["A", "B", "C", "D"]
+    },
+    {
+      "batch_id": "mixed_batch",
+      "label": "別の荷物条件（到着順が違い、属性不明のEを含む）",
+      "object_ids": ["C", "E", "A", "D", "B"]
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "workflow_id": "cage_loading_fixture",
+  "version": 2,
+  "note": "手書きのテスト用ワークフロー。Claudeが生成した成果物ではない。根拠の note はデモ用作業説明・動画（docs/DEMO_INPUT.md の台本）を指す。ai_hypothesis の暫定動作は、Claudeが付与する仮説の例として手書きしたもの。",
+  "start_node_id": "start",
+  "nodes": [
+    { "id": "start", "type": "start", "label": "荷物1個の処理を開始", "next": "observe_attrs" },
+    {
+      "id": "observe_attrs",
+      "type": "observe",
+      "label": "荷物の属性を確認",
+      "required_fields": ["fragile_content", "material_class", "base_area_m2", "weight_kg"],
+      "next": "is_fragile"
+    },
+    {
+      "id": "is_fragile",
+      "type": "decision",
+      "label": "壊れ物か",
+      "field": "fragile_content",
+      "operator": "eq",
+      "value": true,
+      "definition_status": "defined",
+      "source_evidence": [
+        { "type": "provided_text", "note": "「ワレモノなので押し込みません」" },
+        { "type": "mock_metadata", "note": "壊れ物かどうかは模擬荷物マスタの属性" }
+      ],
+      "on_true": "place_top_gentle",
+      "on_false": "is_soft",
+      "on_unknown": "place_unknown_provisional"
+    },
+    {
+      "id": "is_soft",
+      "type": "decision",
+      "label": "柔らかい荷物か",
+      "field": "material_class",
+      "operator": "eq",
+      "value": "soft",
+      "definition_status": "defined",
+      "source_evidence": [
+        { "type": "provided_text", "note": "「柔らかいバッグは後で、上に載せます」" }
+      ],
+      "on_true": "place_top",
+      "on_false": "is_large",
+      "on_unknown": "place_unknown_provisional"
+    },
+    {
+      "id": "is_large",
+      "type": "decision",
+      "label": "大きい箱か（底面0.15㎡以上）",
+      "field": "base_area_m2",
+      "operator": "ge",
+      "value": 0.15,
+      "definition_status": "defined",
+      "source_evidence": [
+        { "type": "provided_text", "note": "「底面が0.15平方メートル以上の大きい箱は下に置きます」" }
+      ],
+      "on_true": "place_bottom",
+      "on_false": "is_heavy",
+      "on_unknown": "place_unknown_provisional"
+    },
+    {
+      "id": "is_heavy",
+      "type": "decision",
+      "label": "重い荷物か",
+      "field": "weight_kg",
+      "operator": "ge",
+      "value": null,
+      "definition_status": "needs_confirmation",
+      "confirmation_note": "「重い」の重量基準が説明に示されていない",
+      "source_evidence": [
+        { "type": "provided_text", "note": "「この箱は小さいけど重いので、これも下に置きます」" }
+      ],
+      "on_true": "place_bottom",
+      "on_false": "place_light_provisional",
+      "on_unknown": "place_heavy_provisional"
+    },
+    {
+      "id": "place_bottom",
+      "type": "skill",
+      "label": "下段へ置く",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "bottom", "press_mode": "normal" },
+      "next": "end_placed"
+    },
+    {
+      "id": "place_top",
+      "type": "skill",
+      "label": "上段へ置く",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "top", "press_mode": "normal" },
+      "next": "end_placed"
+    },
+    {
+      "id": "place_top_gentle",
+      "type": "skill",
+      "label": "押し込まずに上段へ置く",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "top", "press_mode": "no_press" },
+      "next": "end_placed"
+    },
+    {
+      "id": "place_heavy_provisional",
+      "type": "skill",
+      "label": "下段へ置く（暫定：動画どおり）",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "bottom", "press_mode": "normal" },
+      "provisional": true,
+      "provisional_note": "「重い」の基準が未定義のため、動画で作業者が行ったとおり下段に置く",
+      "source_evidence": [
+        { "type": "video_observation", "note": "作業者が小さく重い箱Bを下段に置いた" },
+        { "type": "provided_text", "note": "「この箱は小さいけど重いので、これも下に置きます」" }
+      ],
+      "next": "end_placed"
+    },
+    {
+      "id": "place_light_provisional",
+      "type": "skill",
+      "label": "上段へ置く（暫定：AIの仮説）",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "top", "press_mode": "normal" },
+      "provisional": true,
+      "provisional_note": "小さく軽い硬い箱の置き場所は動画・説明にないため、軽い荷物は上段とする仮説で置く",
+      "source_evidence": [
+        { "type": "ai_hypothesis", "note": "重い荷物を下段に置く説明から、軽い荷物は上段でよいと推測" }
+      ],
+      "next": "end_placed"
+    },
+    {
+      "id": "place_unknown_provisional",
+      "type": "skill",
+      "label": "押し込まずに上段へ置く（暫定：AIの仮説）",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "top", "press_mode": "no_press" },
+      "provisional": true,
+      "provisional_note": "判断に必要な属性が不明なため、壊れ物・柔らかい物の可能性を考えて最も慎重な置き方にする",
+      "source_evidence": [
+        { "type": "ai_hypothesis", "note": "属性不明の荷物は、潰さない置き方を優先するという仮説" }
+      ],
+      "next": "end_placed"
+    },
+    { "id": "end_placed", "type": "end", "label": "積付完了（仮想）", "result": "placed" }
+  ]
+}

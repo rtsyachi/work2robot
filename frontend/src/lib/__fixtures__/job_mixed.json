@@ -1,0 +1,1561 @@
+{
+ "job_trace_version": 1,
+ "job_id": "cage_cart_loading",
+ "workflow_id": "cage_loading_fixture",
+ "workflow_version": 2,
+ "cart": {
+  "width_m": 0.8,
+  "depth_m": 0.6,
+  "height_m": 1.6
+ },
+ "arrival": [
+  "C",
+  "E",
+  "A",
+  "D",
+  "B"
+ ],
+ "order": [
+  "A",
+  "B",
+  "C",
+  "E",
+  "D"
+ ],
+ "items": [
+  {
+   "object_id": "A",
+   "seq": 0,
+   "item_trace": {
+    "trace_version": 1,
+    "workflow_id": "cage_loading_fixture",
+    "workflow_version": 2,
+    "object_id": "A",
+    "steps": [
+     {
+      "index": 0,
+      "node_id": "start",
+      "node_type": "start",
+      "label": "荷物1個の処理を開始"
+     },
+     {
+      "index": 1,
+      "node_id": "observe_attrs",
+      "node_type": "observe",
+      "label": "荷物の属性を確認",
+      "observed": {
+       "fragile_content": {
+        "value": false,
+        "source": "mock_metadata"
+       },
+       "material_class": {
+        "value": "rigid",
+        "source": "mock_metadata"
+       },
+       "base_area_m2": {
+        "value": 0.2,
+        "source": "mock_metadata"
+       },
+       "weight_kg": {
+        "value": 3.0,
+        "source": "mock_metadata"
+       }
+      },
+      "missing_fields": []
+     },
+     {
+      "index": 2,
+      "node_id": "is_fragile",
+      "node_type": "decision",
+      "label": "壊れ物か",
+      "field": "fragile_content",
+      "operator": "eq",
+      "value": true,
+      "input": {
+       "value": false,
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "false",
+      "edge": "on_false",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「ワレモノなので押し込みません」"
+       },
+       {
+        "type": "mock_metadata",
+        "note": "壊れ物かどうかは模擬荷物マスタの属性"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "node_id": "is_soft",
+      "node_type": "decision",
+      "label": "柔らかい荷物か",
+      "field": "material_class",
+      "operator": "eq",
+      "value": "soft",
+      "input": {
+       "value": "rigid",
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "false",
+      "edge": "on_false",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「柔らかいバッグは後で、上に載せます」"
+       }
+      ]
+     },
+     {
+      "index": 4,
+      "node_id": "is_large",
+      "node_type": "decision",
+      "label": "大きい箱か（底面0.15㎡以上）",
+      "field": "base_area_m2",
+      "operator": "ge",
+      "value": 0.15,
+      "input": {
+       "value": 0.2,
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "true",
+      "edge": "on_true",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「底面が0.15平方メートル以上の大きい箱は下に置きます」"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "node_id": "place_bottom",
+      "node_type": "skill",
+      "label": "下段へ置く",
+      "skill_event": {
+       "seq": 0,
+       "node_id": "place_bottom",
+       "skill": "pick_place",
+       "parameters": {
+        "zone": "bottom",
+        "press_mode": "normal"
+       },
+       "provisional": false
+      }
+     },
+     {
+      "index": 6,
+      "node_id": "end_placed",
+      "node_type": "end",
+      "label": "積付完了（仮想）",
+      "result": "placed"
+     }
+    ],
+    "edges": [
+     {
+      "from": "start",
+      "to": "observe_attrs",
+      "label": "next"
+     },
+     {
+      "from": "observe_attrs",
+      "to": "is_fragile",
+      "label": "next"
+     },
+     {
+      "from": "is_fragile",
+      "to": "is_soft",
+      "label": "on_false"
+     },
+     {
+      "from": "is_soft",
+      "to": "is_large",
+      "label": "on_false"
+     },
+     {
+      "from": "is_large",
+      "to": "place_bottom",
+      "label": "on_true"
+     },
+     {
+      "from": "place_bottom",
+      "to": "end_placed",
+      "label": "next"
+     }
+    ],
+    "skill_events": [
+     {
+      "seq": 0,
+      "node_id": "place_bottom",
+      "skill": "pick_place",
+      "parameters": {
+       "zone": "bottom",
+       "press_mode": "normal"
+      },
+      "provisional": false
+     }
+    ],
+    "handoffs": [],
+    "unknown_fields": [],
+    "unconfirmed_conditions": [],
+    "provisional_actions": [],
+    "result": "placed"
+   },
+   "outcome": "placed",
+   "dims": [
+    0.5,
+    0.4,
+    0.3
+   ],
+   "zone": "bottom",
+   "press_mode": "normal",
+   "provisional": false,
+   "placement": {
+    "position": [
+     -0.15,
+     0.15,
+     -0.1
+    ],
+    "dims": [
+     0.5,
+     0.4,
+     0.3
+    ],
+    "rotated": false,
+    "support": null
+   },
+   "handoff_reason": null,
+   "cart_after": {
+    "bottom": [
+     "A"
+    ],
+    "top": [],
+    "height_used_m": 0.3
+   }
+  },
+  {
+   "object_id": "B",
+   "seq": 1,
+   "item_trace": {
+    "trace_version": 1,
+    "workflow_id": "cage_loading_fixture",
+    "workflow_version": 2,
+    "object_id": "B",
+    "steps": [
+     {
+      "index": 0,
+      "node_id": "start",
+      "node_type": "start",
+      "label": "荷物1個の処理を開始"
+     },
+     {
+      "index": 1,
+      "node_id": "observe_attrs",
+      "node_type": "observe",
+      "label": "荷物の属性を確認",
+      "observed": {
+       "fragile_content": {
+        "value": false,
+        "source": "mock_metadata"
+       },
+       "material_class": {
+        "value": "rigid",
+        "source": "mock_metadata"
+       },
+       "base_area_m2": {
+        "value": 0.075,
+        "source": "mock_metadata"
+       },
+       "weight_kg": {
+        "value": 12.0,
+        "source": "mock_metadata"
+       }
+      },
+      "missing_fields": []
+     },
+     {
+      "index": 2,
+      "node_id": "is_fragile",
+      "node_type": "decision",
+      "label": "壊れ物か",
+      "field": "fragile_content",
+      "operator": "eq",
+      "value": true,
+      "input": {
+       "value": false,
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "false",
+      "edge": "on_false",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「ワレモノなので押し込みません」"
+       },
+       {
+        "type": "mock_metadata",
+        "note": "壊れ物かどうかは模擬荷物マスタの属性"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "node_id": "is_soft",
+      "node_type": "decision",
+      "label": "柔らかい荷物か",
+      "field": "material_class",
+      "operator": "eq",
+      "value": "soft",
+      "input": {
+       "value": "rigid",
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "false",
+      "edge": "on_false",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「柔らかいバッグは後で、上に載せます」"
+       }
+      ]
+     },
+     {
+      "index": 4,
+      "node_id": "is_large",
+      "node_type": "decision",
+      "label": "大きい箱か（底面0.15㎡以上）",
+      "field": "base_area_m2",
+      "operator": "ge",
+      "value": 0.15,
+      "input": {
+       "value": 0.075,
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "false",
+      "edge": "on_false",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「底面が0.15平方メートル以上の大きい箱は下に置きます」"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "node_id": "is_heavy",
+      "node_type": "decision",
+      "label": "重い荷物か",
+      "field": "weight_kg",
+      "operator": "ge",
+      "value": null,
+      "input": {
+       "value": 12.0,
+       "source": "mock_metadata"
+      },
+      "definition_status": "needs_confirmation",
+      "result": "unknown",
+      "edge": "on_unknown",
+      "reason": "判断基準が未定義：「重い」の重量基準が説明に示されていない"
+     },
+     {
+      "index": 6,
+      "node_id": "place_heavy_provisional",
+      "node_type": "skill",
+      "label": "下段へ置く（暫定：動画どおり）",
+      "skill_event": {
+       "seq": 0,
+       "node_id": "place_heavy_provisional",
+       "skill": "pick_place",
+       "parameters": {
+        "zone": "bottom",
+        "press_mode": "normal"
+       },
+       "provisional": true
+      }
+     },
+     {
+      "index": 7,
+      "node_id": "end_placed",
+      "node_type": "end",
+      "label": "積付完了（仮想）",
+      "result": "placed"
+     }
+    ],
+    "edges": [
+     {
+      "from": "start",
+      "to": "observe_attrs",
+      "label": "next"
+     },
+     {
+      "from": "observe_attrs",
+      "to": "is_fragile",
+      "label": "next"
+     },
+     {
+      "from": "is_fragile",
+      "to": "is_soft",
+      "label": "on_false"
+     },
+     {
+      "from": "is_soft",
+      "to": "is_large",
+      "label": "on_false"
+     },
+     {
+      "from": "is_large",
+      "to": "is_heavy",
+      "label": "on_false"
+     },
+     {
+      "from": "is_heavy",
+      "to": "place_heavy_provisional",
+      "label": "on_unknown"
+     },
+     {
+      "from": "place_heavy_provisional",
+      "to": "end_placed",
+      "label": "next"
+     }
+    ],
+    "skill_events": [
+     {
+      "seq": 0,
+      "node_id": "place_heavy_provisional",
+      "skill": "pick_place",
+      "parameters": {
+       "zone": "bottom",
+       "press_mode": "normal"
+      },
+      "provisional": true
+     }
+    ],
+    "handoffs": [],
+    "unknown_fields": [],
+    "unconfirmed_conditions": [
+     "is_heavy"
+    ],
+    "provisional_actions": [
+     {
+      "node_id": "place_heavy_provisional",
+      "note": "「重い」の基準が未定義のため、動画で作業者が行ったとおり下段に置く",
+      "evidence": [
+       {
+        "type": "video_observation",
+        "note": "作業者が小さく重い箱Bを下段に置いた"
+       },
+       {
+        "type": "provided_text",
+        "note": "「この箱は小さいけど重いので、これも下に置きます」"
+       }
+      ]
+     }
+    ],
+    "result": "placed"
+   },
+   "outcome": "placed",
+   "dims": [
+    0.3,
+    0.25,
+    0.25
+   ],
+   "zone": "bottom",
+   "press_mode": "normal",
+   "provisional": true,
+   "placement": {
+    "position": [
+     0.25,
+     0.125,
+     -0.175
+    ],
+    "dims": [
+     0.3,
+     0.25,
+     0.25
+    ],
+    "rotated": false,
+    "support": null
+   },
+   "handoff_reason": null,
+   "cart_after": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [],
+    "height_used_m": 0.3
+   }
+  },
+  {
+   "object_id": "C",
+   "seq": 2,
+   "item_trace": {
+    "trace_version": 1,
+    "workflow_id": "cage_loading_fixture",
+    "workflow_version": 2,
+    "object_id": "C",
+    "steps": [
+     {
+      "index": 0,
+      "node_id": "start",
+      "node_type": "start",
+      "label": "荷物1個の処理を開始"
+     },
+     {
+      "index": 1,
+      "node_id": "observe_attrs",
+      "node_type": "observe",
+      "label": "荷物の属性を確認",
+      "observed": {
+       "fragile_content": {
+        "value": false,
+        "source": "mock_metadata"
+       },
+       "material_class": {
+        "value": "soft",
+        "source": "mock_metadata"
+       },
+       "base_area_m2": {
+        "value": 0.16,
+        "source": "mock_metadata"
+       },
+       "weight_kg": {
+        "value": 2.0,
+        "source": "mock_metadata"
+       }
+      },
+      "missing_fields": []
+     },
+     {
+      "index": 2,
+      "node_id": "is_fragile",
+      "node_type": "decision",
+      "label": "壊れ物か",
+      "field": "fragile_content",
+      "operator": "eq",
+      "value": true,
+      "input": {
+       "value": false,
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "false",
+      "edge": "on_false",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「ワレモノなので押し込みません」"
+       },
+       {
+        "type": "mock_metadata",
+        "note": "壊れ物かどうかは模擬荷物マスタの属性"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "node_id": "is_soft",
+      "node_type": "decision",
+      "label": "柔らかい荷物か",
+      "field": "material_class",
+      "operator": "eq",
+      "value": "soft",
+      "input": {
+       "value": "soft",
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "true",
+      "edge": "on_true",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「柔らかいバッグは後で、上に載せます」"
+       }
+      ]
+     },
+     {
+      "index": 4,
+      "node_id": "place_top",
+      "node_type": "skill",
+      "label": "上段へ置く",
+      "skill_event": {
+       "seq": 0,
+       "node_id": "place_top",
+       "skill": "pick_place",
+       "parameters": {
+        "zone": "top",
+        "press_mode": "normal"
+       },
+       "provisional": false
+      }
+     },
+     {
+      "index": 5,
+      "node_id": "end_placed",
+      "node_type": "end",
+      "label": "積付完了（仮想）",
+      "result": "placed"
+     }
+    ],
+    "edges": [
+     {
+      "from": "start",
+      "to": "observe_attrs",
+      "label": "next"
+     },
+     {
+      "from": "observe_attrs",
+      "to": "is_fragile",
+      "label": "next"
+     },
+     {
+      "from": "is_fragile",
+      "to": "is_soft",
+      "label": "on_false"
+     },
+     {
+      "from": "is_soft",
+      "to": "place_top",
+      "label": "on_true"
+     },
+     {
+      "from": "place_top",
+      "to": "end_placed",
+      "label": "next"
+     }
+    ],
+    "skill_events": [
+     {
+      "seq": 0,
+      "node_id": "place_top",
+      "skill": "pick_place",
+      "parameters": {
+       "zone": "top",
+       "press_mode": "normal"
+      },
+      "provisional": false
+     }
+    ],
+    "handoffs": [],
+    "unknown_fields": [],
+    "unconfirmed_conditions": [],
+    "provisional_actions": [],
+    "result": "placed"
+   },
+   "outcome": "placed",
+   "dims": [
+    0.45,
+    0.35,
+    0.2
+   ],
+   "zone": "top",
+   "press_mode": "normal",
+   "provisional": false,
+   "placement": {
+    "position": [
+     -0.15,
+     0.4,
+     -0.1
+    ],
+    "dims": [
+     0.45,
+     0.35,
+     0.2
+    ],
+    "rotated": false,
+    "support": "A"
+   },
+   "handoff_reason": null,
+   "cart_after": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [
+     "C"
+    ],
+    "height_used_m": 0.5
+   }
+  },
+  {
+   "object_id": "E",
+   "seq": 3,
+   "item_trace": {
+    "trace_version": 1,
+    "workflow_id": "cage_loading_fixture",
+    "workflow_version": 2,
+    "object_id": "E",
+    "steps": [
+     {
+      "index": 0,
+      "node_id": "start",
+      "node_type": "start",
+      "label": "荷物1個の処理を開始"
+     },
+     {
+      "index": 1,
+      "node_id": "observe_attrs",
+      "node_type": "observe",
+      "label": "荷物の属性を確認",
+      "observed": {
+       "fragile_content": {
+        "value": false,
+        "source": "mock_metadata"
+       },
+       "base_area_m2": {
+        "value": 0.1,
+        "source": "mock_metadata"
+       }
+      },
+      "missing_fields": [
+       "material_class",
+       "weight_kg"
+      ]
+     },
+     {
+      "index": 2,
+      "node_id": "is_fragile",
+      "node_type": "decision",
+      "label": "壊れ物か",
+      "field": "fragile_content",
+      "operator": "eq",
+      "value": true,
+      "input": {
+       "value": false,
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "false",
+      "edge": "on_false",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「ワレモノなので押し込みません」"
+       },
+       {
+        "type": "mock_metadata",
+        "note": "壊れ物かどうかは模擬荷物マスタの属性"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "node_id": "is_soft",
+      "node_type": "decision",
+      "label": "柔らかい荷物か",
+      "field": "material_class",
+      "operator": "eq",
+      "value": "soft",
+      "input": {
+       "value": null,
+       "source": "unknown"
+      },
+      "definition_status": "defined",
+      "result": "unknown",
+      "edge": "on_unknown",
+      "reason": "属性「material_class」が不明",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「柔らかいバッグは後で、上に載せます」"
+       }
+      ]
+     },
+     {
+      "index": 4,
+      "node_id": "place_unknown_provisional",
+      "node_type": "skill",
+      "label": "押し込まずに上段へ置く（暫定：AIの仮説）",
+      "skill_event": {
+       "seq": 0,
+       "node_id": "place_unknown_provisional",
+       "skill": "pick_place",
+       "parameters": {
+        "zone": "top",
+        "press_mode": "no_press"
+       },
+       "provisional": true
+      }
+     },
+     {
+      "index": 5,
+      "node_id": "end_placed",
+      "node_type": "end",
+      "label": "積付完了（仮想）",
+      "result": "placed"
+     }
+    ],
+    "edges": [
+     {
+      "from": "start",
+      "to": "observe_attrs",
+      "label": "next"
+     },
+     {
+      "from": "observe_attrs",
+      "to": "is_fragile",
+      "label": "next"
+     },
+     {
+      "from": "is_fragile",
+      "to": "is_soft",
+      "label": "on_false"
+     },
+     {
+      "from": "is_soft",
+      "to": "place_unknown_provisional",
+      "label": "on_unknown"
+     },
+     {
+      "from": "place_unknown_provisional",
+      "to": "end_placed",
+      "label": "next"
+     }
+    ],
+    "skill_events": [
+     {
+      "seq": 0,
+      "node_id": "place_unknown_provisional",
+      "skill": "pick_place",
+      "parameters": {
+       "zone": "top",
+       "press_mode": "no_press"
+      },
+      "provisional": true
+     }
+    ],
+    "handoffs": [],
+    "unknown_fields": [
+     "material_class"
+    ],
+    "unconfirmed_conditions": [],
+    "provisional_actions": [
+     {
+      "node_id": "place_unknown_provisional",
+      "note": "判断に必要な属性が不明なため、壊れ物・柔らかい物の可能性を考えて最も慎重な置き方にする",
+      "evidence": [
+       {
+        "type": "ai_hypothesis",
+        "note": "属性不明の荷物は、潰さない置き方を優先するという仮説"
+       }
+      ]
+     }
+    ],
+    "result": "placed"
+   },
+   "outcome": "placed",
+   "dims": [
+    0.4,
+    0.25,
+    0.2
+   ],
+   "zone": "top",
+   "press_mode": "no_press",
+   "provisional": true,
+   "placement": {
+    "position": [
+     -0.15,
+     0.6,
+     -0.1
+    ],
+    "dims": [
+     0.4,
+     0.25,
+     0.2
+    ],
+    "rotated": false,
+    "support": "C"
+   },
+   "handoff_reason": null,
+   "cart_after": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [
+     "C",
+     "E"
+    ],
+    "height_used_m": 0.7
+   }
+  },
+  {
+   "object_id": "D",
+   "seq": 4,
+   "item_trace": {
+    "trace_version": 1,
+    "workflow_id": "cage_loading_fixture",
+    "workflow_version": 2,
+    "object_id": "D",
+    "steps": [
+     {
+      "index": 0,
+      "node_id": "start",
+      "node_type": "start",
+      "label": "荷物1個の処理を開始"
+     },
+     {
+      "index": 1,
+      "node_id": "observe_attrs",
+      "node_type": "observe",
+      "label": "荷物の属性を確認",
+      "observed": {
+       "fragile_content": {
+        "value": true,
+        "source": "mock_metadata"
+       },
+       "material_class": {
+        "value": "soft",
+        "source": "mock_metadata"
+       },
+       "base_area_m2": {
+        "value": 0.12,
+        "source": "mock_metadata"
+       },
+       "weight_kg": {
+        "value": 1.5,
+        "source": "mock_metadata"
+       }
+      },
+      "missing_fields": []
+     },
+     {
+      "index": 2,
+      "node_id": "is_fragile",
+      "node_type": "decision",
+      "label": "壊れ物か",
+      "field": "fragile_content",
+      "operator": "eq",
+      "value": true,
+      "input": {
+       "value": true,
+       "source": "mock_metadata"
+      },
+      "definition_status": "defined",
+      "result": "true",
+      "edge": "on_true",
+      "rule_evidence": [
+       {
+        "type": "provided_text",
+        "note": "「ワレモノなので押し込みません」"
+       },
+       {
+        "type": "mock_metadata",
+        "note": "壊れ物かどうかは模擬荷物マスタの属性"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "node_id": "place_top_gentle",
+      "node_type": "skill",
+      "label": "押し込まずに上段へ置く",
+      "skill_event": {
+       "seq": 0,
+       "node_id": "place_top_gentle",
+       "skill": "pick_place",
+       "parameters": {
+        "zone": "top",
+        "press_mode": "no_press"
+       },
+       "provisional": false
+      }
+     },
+     {
+      "index": 4,
+      "node_id": "end_placed",
+      "node_type": "end",
+      "label": "積付完了（仮想）",
+      "result": "placed"
+     }
+    ],
+    "edges": [
+     {
+      "from": "start",
+      "to": "observe_attrs",
+      "label": "next"
+     },
+     {
+      "from": "observe_attrs",
+      "to": "is_fragile",
+      "label": "next"
+     },
+     {
+      "from": "is_fragile",
+      "to": "place_top_gentle",
+      "label": "on_true"
+     },
+     {
+      "from": "place_top_gentle",
+      "to": "end_placed",
+      "label": "next"
+     }
+    ],
+    "skill_events": [
+     {
+      "seq": 0,
+      "node_id": "place_top_gentle",
+      "skill": "pick_place",
+      "parameters": {
+       "zone": "top",
+       "press_mode": "no_press"
+      },
+      "provisional": false
+     }
+    ],
+    "handoffs": [],
+    "unknown_fields": [],
+    "unconfirmed_conditions": [],
+    "provisional_actions": [],
+    "result": "placed"
+   },
+   "outcome": "placed",
+   "dims": [
+    0.4,
+    0.3,
+    0.2
+   ],
+   "zone": "top",
+   "press_mode": "no_press",
+   "provisional": false,
+   "placement": {
+    "position": [
+     -0.15,
+     0.8,
+     -0.1
+    ],
+    "dims": [
+     0.4,
+     0.3,
+     0.2
+    ],
+    "rotated": false,
+    "support": "E"
+   },
+   "handoff_reason": null,
+   "cart_after": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [
+     "C",
+     "E",
+     "D"
+    ],
+    "height_used_m": 0.9
+   }
+  }
+ ],
+ "level1_steps": [
+  {
+   "seq": 0,
+   "node_id": "l1_start",
+   "object_id": null,
+   "edge": "next"
+  },
+  {
+   "seq": 1,
+   "node_id": "l1_list",
+   "object_id": null,
+   "edge": "next",
+   "count": 5
+  },
+  {
+   "seq": 2,
+   "node_id": "l1_order",
+   "object_id": null,
+   "edge": "next",
+   "order": [
+    "A",
+    "B",
+    "C",
+    "E",
+    "D"
+   ]
+  },
+  {
+   "seq": 3,
+   "node_id": "l1_take_next",
+   "object_id": "A",
+   "edge": "next"
+  },
+  {
+   "seq": 4,
+   "node_id": "l1_item_workflow",
+   "object_id": "A",
+   "edge": "placed"
+  },
+  {
+   "seq": 5,
+   "node_id": "l1_check_space",
+   "object_id": "A",
+   "edge": "on_true"
+  },
+  {
+   "seq": 6,
+   "node_id": "l1_place",
+   "object_id": "A",
+   "edge": "next"
+  },
+  {
+   "seq": 7,
+   "node_id": "l1_update",
+   "object_id": "A",
+   "edge": "next",
+   "cart": {
+    "bottom": [
+     "A"
+    ],
+    "top": [],
+    "height_used_m": 0.3
+   }
+  },
+  {
+   "seq": 8,
+   "node_id": "l1_more",
+   "object_id": "A",
+   "edge": "on_true"
+  },
+  {
+   "seq": 9,
+   "node_id": "l1_take_next",
+   "object_id": "B",
+   "edge": "next"
+  },
+  {
+   "seq": 10,
+   "node_id": "l1_item_workflow",
+   "object_id": "B",
+   "edge": "placed"
+  },
+  {
+   "seq": 11,
+   "node_id": "l1_check_space",
+   "object_id": "B",
+   "edge": "on_true"
+  },
+  {
+   "seq": 12,
+   "node_id": "l1_place",
+   "object_id": "B",
+   "edge": "next"
+  },
+  {
+   "seq": 13,
+   "node_id": "l1_update",
+   "object_id": "B",
+   "edge": "next",
+   "cart": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [],
+    "height_used_m": 0.3
+   }
+  },
+  {
+   "seq": 14,
+   "node_id": "l1_more",
+   "object_id": "B",
+   "edge": "on_true"
+  },
+  {
+   "seq": 15,
+   "node_id": "l1_take_next",
+   "object_id": "C",
+   "edge": "next"
+  },
+  {
+   "seq": 16,
+   "node_id": "l1_item_workflow",
+   "object_id": "C",
+   "edge": "placed"
+  },
+  {
+   "seq": 17,
+   "node_id": "l1_check_space",
+   "object_id": "C",
+   "edge": "on_true"
+  },
+  {
+   "seq": 18,
+   "node_id": "l1_place",
+   "object_id": "C",
+   "edge": "next"
+  },
+  {
+   "seq": 19,
+   "node_id": "l1_update",
+   "object_id": "C",
+   "edge": "next",
+   "cart": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [
+     "C"
+    ],
+    "height_used_m": 0.5
+   }
+  },
+  {
+   "seq": 20,
+   "node_id": "l1_more",
+   "object_id": "C",
+   "edge": "on_true"
+  },
+  {
+   "seq": 21,
+   "node_id": "l1_take_next",
+   "object_id": "E",
+   "edge": "next"
+  },
+  {
+   "seq": 22,
+   "node_id": "l1_item_workflow",
+   "object_id": "E",
+   "edge": "placed"
+  },
+  {
+   "seq": 23,
+   "node_id": "l1_check_space",
+   "object_id": "E",
+   "edge": "on_true"
+  },
+  {
+   "seq": 24,
+   "node_id": "l1_place",
+   "object_id": "E",
+   "edge": "next"
+  },
+  {
+   "seq": 25,
+   "node_id": "l1_update",
+   "object_id": "E",
+   "edge": "next",
+   "cart": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [
+     "C",
+     "E"
+    ],
+    "height_used_m": 0.7
+   }
+  },
+  {
+   "seq": 26,
+   "node_id": "l1_more",
+   "object_id": "E",
+   "edge": "on_true"
+  },
+  {
+   "seq": 27,
+   "node_id": "l1_take_next",
+   "object_id": "D",
+   "edge": "next"
+  },
+  {
+   "seq": 28,
+   "node_id": "l1_item_workflow",
+   "object_id": "D",
+   "edge": "placed"
+  },
+  {
+   "seq": 29,
+   "node_id": "l1_check_space",
+   "object_id": "D",
+   "edge": "on_true"
+  },
+  {
+   "seq": 30,
+   "node_id": "l1_place",
+   "object_id": "D",
+   "edge": "next"
+  },
+  {
+   "seq": 31,
+   "node_id": "l1_update",
+   "object_id": "D",
+   "edge": "next",
+   "cart": {
+    "bottom": [
+     "A",
+     "B"
+    ],
+    "top": [
+     "C",
+     "E",
+     "D"
+    ],
+    "height_used_m": 0.9
+   }
+  },
+  {
+   "seq": 32,
+   "node_id": "l1_more",
+   "object_id": "D",
+   "edge": "on_false"
+  },
+  {
+   "seq": 33,
+   "node_id": "l1_end",
+   "object_id": null,
+   "edge": "next"
+  }
+ ],
+ "primitives": [
+  {
+   "seq": 0,
+   "object_id": "A",
+   "kind": "recognize",
+   "at": [
+    -2.1,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 1,
+   "object_id": "A",
+   "kind": "pick",
+   "from": [
+    -2.1,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 2,
+   "object_id": "A",
+   "kind": "move",
+   "to": [
+    -0.15,
+    0.55,
+    -0.1
+   ]
+  },
+  {
+   "seq": 3,
+   "object_id": "A",
+   "kind": "place",
+   "position": [
+    -0.15,
+    0.15,
+    -0.1
+   ],
+   "rotated": false,
+   "zone": "bottom",
+   "press_mode": "normal",
+   "provisional": false
+  },
+  {
+   "seq": 4,
+   "object_id": "B",
+   "kind": "recognize",
+   "at": [
+    -3.2,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 5,
+   "object_id": "B",
+   "kind": "pick",
+   "from": [
+    -3.2,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 6,
+   "object_id": "B",
+   "kind": "move",
+   "to": [
+    0.25,
+    0.5,
+    -0.175
+   ]
+  },
+  {
+   "seq": 7,
+   "object_id": "B",
+   "kind": "place",
+   "position": [
+    0.25,
+    0.125,
+    -0.175
+   ],
+   "rotated": false,
+   "zone": "bottom",
+   "press_mode": "normal",
+   "provisional": true
+  },
+  {
+   "seq": 8,
+   "object_id": "C",
+   "kind": "recognize",
+   "at": [
+    -1.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 9,
+   "object_id": "C",
+   "kind": "pick",
+   "from": [
+    -1.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 10,
+   "object_id": "C",
+   "kind": "move",
+   "to": [
+    -0.15,
+    0.75,
+    -0.1
+   ]
+  },
+  {
+   "seq": 11,
+   "object_id": "C",
+   "kind": "place",
+   "position": [
+    -0.15,
+    0.4,
+    -0.1
+   ],
+   "rotated": false,
+   "zone": "top",
+   "press_mode": "normal",
+   "provisional": false
+  },
+  {
+   "seq": 12,
+   "object_id": "E",
+   "kind": "recognize",
+   "at": [
+    -1.55,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 13,
+   "object_id": "E",
+   "kind": "pick",
+   "from": [
+    -1.55,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 14,
+   "object_id": "E",
+   "kind": "move",
+   "to": [
+    -0.15,
+    0.95,
+    -0.1
+   ]
+  },
+  {
+   "seq": 15,
+   "object_id": "E",
+   "kind": "place",
+   "position": [
+    -0.15,
+    0.6,
+    -0.1
+   ],
+   "rotated": false,
+   "zone": "top",
+   "press_mode": "no_press",
+   "provisional": true
+  },
+  {
+   "seq": 16,
+   "object_id": "D",
+   "kind": "recognize",
+   "at": [
+    -2.6500000000000004,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 17,
+   "object_id": "D",
+   "kind": "pick",
+   "from": [
+    -2.6500000000000004,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "seq": 18,
+   "object_id": "D",
+   "kind": "move",
+   "to": [
+    -0.15,
+    1.15,
+    -0.1
+   ]
+  },
+  {
+   "seq": 19,
+   "object_id": "D",
+   "kind": "place",
+   "position": [
+    -0.15,
+    0.8,
+    -0.1
+   ],
+   "rotated": false,
+   "zone": "top",
+   "press_mode": "no_press",
+   "provisional": false
+  }
+ ],
+ "end": {
+  "reason": "all_items_processed",
+  "placed": 5,
+  "handed_off": 0,
+  "cart": {
+   "bottom": [
+    "A",
+    "B"
+   ],
+   "top": [
+    "C",
+    "E",
+    "D"
+   ],
+   "height_used_m": 0.9
+  }
+ }
+}

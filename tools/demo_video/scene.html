@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>W2R demo input video</title>
+<style>
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #wm {
+    position: absolute; left: 16px; top: 12px; color: #fff;
+    font: 600 20px "Yu Gothic UI", "Meiryo", sans-serif;
+    background: rgba(0, 0, 0, .5); padding: 4px 10px; border-radius: 4px;
+  }
+  #ts {
+    position: absolute; right: 16px; top: 12px; color: #fff;
+    font: 700 24px Consolas, monospace; background: rgba(0, 0, 0, .5); padding: 2px 10px; border-radius: 4px;
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "/node_modules/three/build/three.module.js",
+  "three/addons/": "/node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="wm">デモ用 模擬作業動画（プログラム生成・実写ではありません）</div>
+<div id="ts">00:00</div>
+<script type="module" src="/scene.js"></script>
+</body>
+</html>

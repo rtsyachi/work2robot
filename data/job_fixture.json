@@ -1,0 +1,16 @@
+{
+  "job_id": "cage_cart_loading",
+  "label": "カゴ車1台の積付",
+  "note": "手書きのテスト用業務定義（Level 1）。Claudeが生成した成果物ではない。",
+  "order_rule": {
+    "type": "zone_priority",
+    "zones": ["bottom", "top"],
+    "note": "下段に置く荷物を先に、上段に載せる荷物を後に積む",
+    "source_evidence": [
+      { "type": "provided_text", "note": "「硬い箱から先に積みます」", "ref": "E2" },
+      { "type": "provided_text", "note": "「柔らかいバッグは後で、上に載せます」", "ref": "E4" }
+    ]
+  },
+  "end_condition": "all_items_processed",
+  "cart": { "width_m": 0.8, "depth_m": 0.6, "height_m": 1.6 }
+}

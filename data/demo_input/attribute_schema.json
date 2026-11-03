@@ -1,0 +1,11 @@
+{
+  "source_type": "mock_metadata",
+  "note": "模擬荷物マスタで参照できる属性の定義。個々の荷物の値は実行時に入力される。置く順番・位置など動画から観測すべき情報は含めない。",
+  "fields": [
+    { "name": "material_class", "type": "string", "values": ["rigid", "soft"], "description": "材質。rigid=硬い（段ボール箱など）、soft=柔らかい（布製バッグなど）" },
+    { "name": "fragile_content", "type": "boolean", "description": "中身が壊れ物か（ワレモノ表示・出荷情報による）" },
+    { "name": "base_area_m2", "type": "number", "description": "底面積（平方メートル）" },
+    { "name": "weight_kg", "type": "number", "description": "重量（kg）" },
+    { "name": "object_type", "type": "string", "description": "荷物の種類（段ボール箱、布製バッグなど）" }
+  ]
+}

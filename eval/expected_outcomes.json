@@ -1,0 +1,10 @@
+{
+  "note": "評価用の期待結果（正解データ）。アプリの入力経路からは読まない。Claudeが生成したワークフローを data/demo_cases.json の荷物で実行し、この結果と比べる。",
+  "objects": {
+    "A": { "zone": "bottom", "press_mode": "normal", "provisional": false },
+    "B": { "zone": "bottom", "press_mode": "normal", "provisional": true, "unconfirmed": true },
+    "C": { "zone": "top", "press_mode": "normal", "provisional": false },
+    "D": { "zone": "top", "press_mode": "no_press", "provisional": false },
+    "E": { "provisional": true, "provisional_evidence": "ai_hypothesis" }
+  }
+}

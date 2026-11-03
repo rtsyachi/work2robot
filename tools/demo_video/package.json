@@ -1,0 +1,15 @@
+{
+  "name": "w2r-demo-video",
+  "private": true,
+  "description": "デモ用模擬作業動画（アプリ入力用）の生成ツール。アプリ本体からは読まない。",
+  "type": "module",
+  "scripts": {
+    "render": "node render.mjs",
+    "still": "node render.mjs --still=1,6,14,30"
+  },
+  "dependencies": {
+    "ffmpeg-static": "5.2.0",
+    "playwright-core": "1.48.2",
+    "three": "0.160.0"
+  }
+}
