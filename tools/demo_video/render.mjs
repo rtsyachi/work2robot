@@ -12,14 +12,20 @@ import ffmpegPath from 'ffmpeg-static';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
-const outDir = path.join(repoRoot, 'local_media', 'demo_input_proto');
+// --scene=v2 … シナリオv2（scene_v2.html）。出力は local_media/demo_input_v2/
+const sceneArg = process.argv.find((a) => a.startsWith('--scene='));
+const sceneName = sceneArg ? sceneArg.slice(8) : 'v1';
+const pageFile = sceneName === 'v2' ? 'scene_v2.html' : 'scene.html';
+const outDir = path.join(repoRoot, 'local_media', sceneName === 'v2' ? 'demo_input_v2' : 'demo_input_proto');
 const stillArg = process.argv.find((a) => a.startsWith('--still='));
 const stills = stillArg ? stillArg.slice(8).split(',').map(Number) : null;
+const voiceArg = process.argv.find((a) => a.startsWith('--voice='));
+const query = voiceArg ? `?voice=${encodeURIComponent(voiceArg.slice(8))}` : '';
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  const file = path.join(here, rel === '/' ? 'scene.html' : rel);
+  const file = path.join(here, rel === '/' ? pageFile : rel);
   if (!file.startsWith(here) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     res.writeHead(404); res.end(); return;
   }
@@ -27,7 +33,7 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(file).pipe(res);
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const url = `http://127.0.0.1:${server.address().port}/`;
+const url = `http://127.0.0.1:${server.address().port}/${query}`;
 
 const browser = await chromium.launch({
   channel: 'msedge',
@@ -42,6 +48,7 @@ try {
   const { duration, fps, events } = await page.evaluate(() => ({ duration: W2R.duration, fps: W2R.fps, events: W2R.events }));
   fs.mkdirSync(outDir, { recursive: true });
   console.log(`duration=${duration.toFixed(2)}s fps=${fps}`);
+  console.log(JSON.stringify(events));
 
   if (stills) {
     for (const s of stills) {
@@ -60,7 +67,7 @@ try {
       await page.screenshot({ path: path.join(framesDir, `f${String(i).padStart(5, '0')}.png`) });
       if (i % 48 === 0) console.log(`frame ${i}/${n}`);
     }
-    const mp4 = path.join(outDir, 'demo_input_proto.mp4');
+    const mp4 = path.join(outDir, sceneName === 'v2' ? 'video_only.mp4' : 'demo_input_proto.mp4');
     const r = spawnSync(ffmpegPath, ['-y', '-loglevel', 'error', '-framerate', String(fps),
       '-i', path.join(framesDir, 'f%05d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', mp4], { stdio: 'inherit' });
     if (r.status !== 0) throw new Error('ffmpeg failed');

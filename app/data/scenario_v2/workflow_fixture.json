@@ -1,0 +1,61 @@
+{
+  "workflow_id": "cage_loading_v2_fixture",
+  "version": 2,
+  "note": "シナリオv2の手書きのテスト用ワークフロー（荷物1個の判断）。Claudeが生成した成果物ではない。段・順番・置き場所は業務全体の規則（job_fixture.json）で決まる。根拠の ref は docs/DEMO_INPUT.md の説明 E1〜E6（録音の文言）。",
+  "start_node_id": "start",
+  "nodes": [
+    { "id": "start", "type": "start", "label": "荷物1個の処理を開始", "next": "observe_attrs" },
+    {
+      "id": "observe_attrs",
+      "type": "observe",
+      "label": "荷物の属性を確認",
+      "required_fields": ["material_class", "weight_kg", "dims_m"],
+      "next": "is_soft"
+    },
+    {
+      "id": "is_soft",
+      "type": "decision",
+      "label": "柔らかい荷物か",
+      "field": "material_class",
+      "operator": "eq",
+      "value": "soft",
+      "definition_status": "defined",
+      "source_evidence": [
+        { "type": "provided_text", "note": "「こういったバッグは柔らかいので、最後に一番上に乗せるようにしています」", "ref": "E5" }
+      ],
+      "on_true": "place_soft_last",
+      "on_false": "place_rigid",
+      "on_unknown": "place_unknown_provisional"
+    },
+    {
+      "id": "place_rigid",
+      "type": "skill",
+      "label": "硬い箱を規則に従って積む",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "auto", "press_mode": "normal", "stack_above": "allowed" },
+      "next": "end_placed"
+    },
+    {
+      "id": "place_soft_last",
+      "type": "skill",
+      "label": "最後に一番上へ（上積み厳禁）",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "top", "press_mode": "normal", "stack_above": "forbidden" },
+      "next": "end_placed"
+    },
+    {
+      "id": "place_unknown_provisional",
+      "type": "skill",
+      "label": "一番上へ押し込まずに置く（暫定：AIの仮説）",
+      "skill_name": "pick_place",
+      "parameters": { "zone": "top", "press_mode": "no_press", "stack_above": "forbidden" },
+      "provisional": true,
+      "provisional_note": "材質が不明なため、柔らかい物の可能性を考えて、潰さない・上に載せない置き方にする",
+      "source_evidence": [
+        { "type": "ai_hypothesis", "note": "材質不明の荷物は柔らかい可能性があるため、上積み禁止として扱う仮説" }
+      ],
+      "next": "end_placed"
+    },
+    { "id": "end_placed", "type": "end", "label": "積付完了（仮想）", "result": "placed" }
+  ]
+}

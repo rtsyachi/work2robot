@@ -1,0 +1,110 @@
+{
+  "catalog_id": "mock_hardware_v2",
+  "note": "仮想メーカー3社の架空の製品カタログ（PoC用のデータ）。実在のメーカー・機種ではなく、仕様値はデモ用の独自の仮定値。「仕様上対応」はこのカタログの定義値に対して条件を満たすという意味で、実機での成立を保証しない。能力は supported（仕様上対応）／partial（一部対応）／unsupported（非対応）／unverified（未確認：実機PoCで確かめる）。",
+  "manufacturers": [
+    { "id": "anchorworks", "name": "A社", "type": "fixed",
+      "philosophy": "固定式の高可搬アームを中心に、コンベヤなどの荷役設備と組み合わせた専用ステーションを構築する",
+      "strengths": "重量物・定位置での反復作業" },
+    { "id": "rovermotion", "name": "B社", "type": "mobile",
+      "philosophy": "倉庫内を走行しながら荷物を扱う、車輪移動式の単腕マニピュレータを提供する",
+      "strengths": "荷物の供給位置とカゴ車の間の移動を伴う作業" },
+    { "id": "humina", "name": "C社", "type": "humanoid",
+      "philosophy": "人間向けの作業環境をそのまま使える、二足歩行・双腕の汎用ロボットを提供する",
+      "strengths": "既存の設備・通路を変えずに多様な作業へ対応（物流作業での安定性は未検証）" }
+  ],
+  "products": [
+    { "id": "aw_40f", "maker_id": "anchorworks", "name": "AW-40F 固定式ステーションアーム", "type": "fixed",
+      "use_case": "定位置での重量物の積付。荷物はコンベヤで手元へ供給する",
+      "structure": "床・架台に固定する高可搬アーム（本体の構造・可搬・リーチは固定）",
+      "fixed": { "base": "fixed_pedestal", "arm": "arm_heavy" },
+      "options": { "end_effector": ["vacuum", "parallel_gripper", "vacuum_gripper"],
+                   "sensors": ["rgb_camera", "depth_camera", "wrist_force_sensor", "scale_station"],
+                   "peripherals": ["infeed_conveyor"] },
+      "default": { "end_effector": "vacuum_gripper", "sensors": ["rgb_camera", "depth_camera"], "peripherals": ["infeed_conveyor"] },
+      "execution": "supported",
+      "option_notes": { "infeed_conveyor": "本体は移動できないため、荷物の供給にはコンベヤ（システムインテグレーション）が必要" },
+      "verification": ["架台・コンベヤの設置スペースとカゴ車の位置関係", "固定位置からカゴ車の奥・上段へのリーチと柵との干渉"] },
+    { "id": "rm_20", "maker_id": "rovermotion", "name": "RM-20 移動マニピュレータ", "type": "mobile",
+      "use_case": "仮置き場からカゴ車へ、走行しながら荷物を運んで積む",
+      "structure": "車輪移動の台車に単腕アーム（台車・アームの構造は固定）",
+      "fixed": { "base": "wheeled_base", "arm": "arm_medium" },
+      "options": { "end_effector": ["vacuum", "vacuum_gripper"],
+                   "sensors": ["rgb_camera", "depth_camera", "wrist_force_sensor", "scale_station"],
+                   "peripherals": [] },
+      "default": { "end_effector": "vacuum", "sensors": ["rgb_camera", "depth_camera"], "peripherals": [] },
+      "execution": "supported",
+      "option_notes": { "parallel_gripper": "この機種の手首インターフェースには対応しない" },
+      "verification": ["走行路の幅・床面の状態（段差・傾斜）", "荷物を持った走行時の安定性"] },
+    { "id": "rm_10", "maker_id": "rovermotion", "name": "RM-10 軽量移動マニピュレータ", "type": "mobile",
+      "use_case": "軽い段ボール中心の搬送・積付",
+      "structure": "小型の車輪移動台車に軽可搬アーム（台車・アームの構造は固定）",
+      "fixed": { "base": "wheeled_base", "arm": "arm_light" },
+      "options": { "end_effector": ["vacuum"], "sensors": ["rgb_camera", "depth_camera"], "peripherals": [] },
+      "default": { "end_effector": "vacuum", "sensors": ["rgb_camera", "depth_camera"], "peripherals": [] },
+      "execution": "supported",
+      "verification": ["走行路の幅・床面の状態"] },
+    { "id": "hm_1", "maker_id": "humina", "name": "HM-1 汎用ヒューマノイド", "type": "humanoid",
+      "use_case": "人間向けの通路・設備のまま、多様な作業を行う",
+      "structure": "二足歩行・双腕の人型（機体構造は固定）",
+      "fixed": { "base": "legged_humanoid", "arm": "arm_dual_humanoid" },
+      "options": { "end_effector": ["humanoid_hands"], "sensors": ["rgb_camera", "depth_camera", "wrist_force_sensor"], "peripherals": [] },
+      "default": { "end_effector": "humanoid_hands", "sensors": ["rgb_camera", "depth_camera"], "peripherals": [] },
+      "execution": "concept",
+      "execution_note": "二足歩行・双腕での運搬は、このシミュレータでは表現していない（概念プレビュー）。配置の論理だけを確認する",
+      "verification": ["荷物を持った二足歩行の安定性・転倒時の安全", "双腕での把持と持ち替え", "動作速度（処理時間）"] }
+  ],
+  "capabilities": {
+    "grasp_box": "段ボール箱をつかむ",
+    "grasp_soft_bag": "柔らかいバッグを潰さずにつかむ",
+    "rotate_90": "荷物を水平に90度回して置く",
+    "place_no_press": "押し込まずにそっと置く（力の加減）",
+    "mobility": "仮置き場とカゴ車の間を移動する",
+    "sense_id": "荷物のタグ・ラベルを読む",
+    "sense_dims": "荷物の寸法・位置を測る",
+    "sense_weight": "荷物の重さを測る",
+    "sense_material": "荷物の材質（硬い／柔らかい）を見分ける"
+  },
+  "components": {
+    "base": [
+      { "id": "fixed_pedestal", "label": "固定台座（模擬）", "shoulder_height_m": 0.9, "mounts": ["arm_light", "arm_medium", "arm_heavy"],
+        "capabilities": { "mobility": "unsupported" }, "note": "仮置き場をロボットの手元に寄せる周辺設備（コンベヤ）があれば移動は不要" },
+      { "id": "wheeled_base", "label": "車輪型の移動台車（模擬）", "shoulder_height_m": 0.85, "mounts": ["arm_light", "arm_medium"],
+        "capabilities": { "mobility": "supported" }, "note": "重いアームは転倒の恐れがあるため載せない（模擬の制約）" },
+      { "id": "legged_humanoid", "label": "二足歩行型（模擬）", "shoulder_height_m": 1.3, "mounts": ["arm_dual_humanoid"],
+        "capabilities": { "mobility": "unverified" }, "note": "荷物を持った歩行の安定性は未確認" }
+    ],
+    "arm": [
+      { "id": "arm_light", "label": "軽可搬アーム（可搬10kg・リーチ1.0m、模擬）", "payload_kg": 10, "reach_m": 1.0,
+        "capabilities": { "rotate_90": "supported" } },
+      { "id": "arm_medium", "label": "中可搬アーム（可搬20kg・リーチ1.3m、模擬）", "payload_kg": 20, "reach_m": 1.3,
+        "capabilities": { "rotate_90": "supported" } },
+      { "id": "arm_heavy", "label": "高可搬アーム（可搬40kg・リーチ1.8m、模擬）", "payload_kg": 40, "reach_m": 1.8,
+        "capabilities": { "rotate_90": "supported" } },
+      { "id": "arm_dual_humanoid", "label": "人型の双腕（両腕で可搬10kg・リーチ0.8m、模擬）", "payload_kg": 10, "reach_m": 0.8,
+        "capabilities": { "rotate_90": "supported" } }
+    ],
+    "end_effector": [
+      { "id": "vacuum", "label": "吸着パッド（模擬）", "mass_kg": 0.8, "max_object_m": 0.6,
+        "capabilities": { "grasp_box": "supported", "grasp_soft_bag": "unsupported", "place_no_press": "unverified" } },
+      { "id": "parallel_gripper", "label": "挟み込みグリッパー（模擬）", "mass_kg": 1.2, "max_object_m": 0.45,
+        "capabilities": { "grasp_box": "supported", "grasp_soft_bag": "unverified", "place_no_press": "unverified" },
+        "note": "開き幅0.45mまで。箱の短い辺で挟む" },
+      { "id": "vacuum_gripper", "label": "吸着＋挟み込みの複合ハンド（模擬）", "mass_kg": 1.6, "max_object_m": 0.6,
+        "capabilities": { "grasp_box": "supported", "grasp_soft_bag": "unverified", "place_no_press": "unverified" },
+        "note": "箱は吸着、袋は下から挟んで支える想定。袋の把持は実機で未確認" },
+      { "id": "humanoid_hands", "label": "人型の手（模擬）", "mass_kg": 0.0, "max_object_m": 0.6,
+        "capabilities": { "grasp_box": "unverified", "grasp_soft_bag": "unverified", "place_no_press": "unverified" } }
+    ],
+    "sensor": [
+      { "id": "rgb_camera", "label": "カメラ（模擬）", "capabilities": { "sense_id": "supported", "sense_material": "unverified" } },
+      { "id": "depth_camera", "label": "深度カメラ（模擬）", "capabilities": { "sense_dims": "supported" } },
+      { "id": "wrist_force_sensor", "label": "手首の力覚センサー（模擬）", "capabilities": { "sense_weight": "partial", "place_no_press": "unverified" },
+        "cap_notes": { "sense_weight": "持ち上げた後にしか重さが分からない（積む順番を決める前には測れない）" },
+        "note": "持ち上げた後に重さを推定する。持ち上げる前には分からない" },
+      { "id": "scale_station", "label": "計量台（周辺設備、模擬）", "capabilities": { "sense_weight": "supported" } }
+    ],
+    "peripheral": [
+      { "id": "infeed_conveyor", "label": "仮置き場からロボット手元へのコンベヤ（周辺設備、模擬）", "capabilities": { "mobility": "supported" } }
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 ---
 paths:
-  - "backend/extraction/**/*.py"
-  - "backend/ai/**/*.py"
-  - "tests/test_extraction*.py"
+  - "app/backend/extraction/**/*.py"
+  - "app/backend/ai/**/*.py"
+  - "app/tests/test_extraction*.py"
 ---
 # AI抽出モジュールの実装ルール
 

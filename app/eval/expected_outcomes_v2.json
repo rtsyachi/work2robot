@@ -1,0 +1,24 @@
+{
+  "note": "シナリオv2の評価用の期待結果。アプリの入力経路からは読まない。抽出した業務定義とワークフローで video_batch・alt_batch を実行し、ここと比べる。",
+  "required_rules": ["order_by_weight_desc", "brick_pattern", "balance_load", "no_stack_last", "load_limit", "height_limit", "overhang_check"],
+  "optional_rules": ["full_support", "balance_check"],
+  "unsupported_rules_min": 1,
+  "unsupported_hint": "荷崩れ（物理的な安定性）の確認など、実行器で扱えない注意が未対応として残る",
+  "batches": {
+    "video_batch": {
+      "placed": 17,
+      "handed_off": 0,
+      "last": ["S1", "S2"],
+      "first_four_weight_desc": ["H1", "H2", "H3", "H4"],
+      "brick_pattern": "applied",
+      "load_ok": true,
+      "height_ok": true,
+      "nothing_above": ["S1", "S2"]
+    },
+    "alt_batch": {
+      "handed_off": 1,
+      "provisional": ["U1"],
+      "_note": "各段とも奥から置く方式（2026-11-03）では、置き場所を1個ずつ決めるため上段に0.4×0.3mの平らな面が残らず、S2は置き場所がなく人へ引き継ぐ"
+    }
+  }
+}

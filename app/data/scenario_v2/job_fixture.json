@@ -1,0 +1,30 @@
+{
+  "job_id": "cage_cart_loading_v2",
+  "label": "カゴ車1台の積付（1便分）",
+  "note": "シナリオv2の手書きのテスト用業務定義（Level 1）。Claudeが生成した成果物ではない。根拠の ref は docs/DEMO_INPUT.md の説明 E1〜E6（録音の文言）。",
+  "cart": { "width_m": 1.0, "depth_m": 0.75, "height_m": 1.2, "max_load_kg": 150 },
+  "rules": [
+    { "type": "order_by_weight_desc", "source_evidence": [
+      { "type": "provided_text", "note": "「重い箱はなるべく下に置いて、全体の重心が低くなるようにしています」", "ref": "E2" },
+      { "type": "video_observation", "note": "混在したパレットから重い箱を選び、先に1段目に置いている（場面2）" }
+    ] },
+    { "type": "brick_pattern", "source_evidence": [{ "type": "provided_text", "note": "「同じようなサイズの箱がたくさんあったら、こんな風に向きを変えてレンガ積みにしています。荷崩れをしにくいようにするためです」", "ref": "E3" }] },
+    { "type": "balance_load", "source_evidence": [{ "type": "provided_text", "note": "「こっちに今、重さが偏っているので、次は反対側に置いています」", "ref": "E4" }] },
+    { "type": "full_support", "source_evidence": [
+      { "type": "video_observation", "note": "軽い箱を、下に隙間のない箱の上面に置いている（場面5）" }
+    ] },
+    { "type": "no_stack_last", "source_evidence": [
+      { "type": "provided_text", "note": "「こういったバッグは柔らかいので、最後に一番上に乗せるようにしています」", "ref": "E5" },
+      { "type": "video_observation", "note": "S1・S2を最後に一番上に置き、その上には何も置いていない（場面6）" }
+    ] },
+    { "type": "load_limit", "source_evidence": [{ "type": "mock_metadata", "note": "カゴ車の表示板：最大積載150kg（模擬のカゴ車の仕様）" }] },
+    { "type": "height_limit", "source_evidence": [{ "type": "mock_metadata", "note": "カゴ車の積付高さの線：1.2m（模擬のカゴ車の仕様）" }] },
+    { "type": "overhang_check", "source_evidence": [{ "type": "provided_text", "note": "「最後にはみ出しや荷崩れがないかを確認して作業は完了です」", "ref": "E6" }] },
+    { "type": "balance_check", "source_evidence": [{ "type": "provided_text", "note": "「こっちに今、重さが偏っているので」（偏りを見ている）", "ref": "E4" }] }
+  ],
+  "unsupported_rules": [
+    { "text": "荷崩れがないか確認する（物理的な安定性）", "source_evidence": [{ "type": "provided_text", "note": "「最後にはみ出しや荷崩れがないかを確認して」", "ref": "E6" }] }
+  ],
+  "balance_tolerance_m": null,
+  "end_condition": "all_items_processed"
+}

@@ -1,0 +1,21 @@
+{
+  "note": "シナリオv2の手書きのテスト用構成（data/hardware_catalog.json の仮想メーカーの機種＋その機種が認めるオプション）。Claudeが選んだものではない。light_vacuum は比較用の能力が足りない構成。",
+  "configs": [
+    {
+      "config_id": "handwritten_medium",
+      "label": "RM-20 移動マニピュレータ＋複合ハンド（手書き）",
+      "product_id": "rm_20",
+      "end_effector": "vacuum_gripper",
+      "sensors": ["rgb_camera", "depth_camera", "wrist_force_sensor"],
+      "peripherals": []
+    },
+    {
+      "config_id": "light_vacuum",
+      "label": "RM-10 軽量移動マニピュレータ＋吸着パッド（比較用）",
+      "product_id": "rm_10",
+      "end_effector": "vacuum",
+      "sensors": ["rgb_camera", "depth_camera"],
+      "peripherals": []
+    }
+  ]
+}

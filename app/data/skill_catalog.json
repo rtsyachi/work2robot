@@ -1,0 +1,31 @@
+{
+  "catalog_id": "mock_robot_v1",
+  "note": "模擬スキルの定義。実機ロボットの能力を検証したものではない。",
+  "skills": [
+    {
+      "name": "pick_place",
+      "description": "荷物を把持し、カゴ車内に置く（模擬）",
+      "parameters": {
+        "zone": {
+          "values": ["bottom", "top", "auto"],
+          "required": true,
+          "note": "bottom=床面、top=最も高い面、auto=業務全体の規則で段を決める"
+        },
+        "press_mode": { "values": ["normal", "no_press"], "required": true },
+        "stack_above": {
+          "values": ["allowed", "forbidden"],
+          "required": false,
+          "note": "forbidden=上積み厳禁（この荷物の上には何も置かない）。省略時は allowed"
+        }
+      },
+      "implementation": "MockRobotAdapter",
+      "physical_verification": "unverified",
+      "poc_checks": [
+        "軟質物・袋物の把持",
+        "カゴ車の柵・開口部との干渉",
+        "押込み力の制御（押し込まない置き方）",
+        "積み重ね時の荷崩れ"
+      ]
+    }
+  ]
+}

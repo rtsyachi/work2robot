@@ -1,0 +1,10 @@
+{
+  "source_type": "mock_metadata",
+  "note": "シナリオv2の荷物マスタで参照できる属性の定義。個々の荷物の値は荷物マスタ（data/masters/item_master.json、画面の Step 0 で登録）から実行時に入力される。カゴ車の仕様は環境マスタから読み込んで cart に入れる。積む順番・位置・向きなど動画から観測すべき情報は含めない。",
+  "fields": [
+    { "name": "material_class", "type": "string", "values": ["rigid", "soft"], "description": "材質。rigid=硬い（段ボール箱など）、soft=柔らかい（布製バッグなど）" },
+    { "name": "weight_kg", "type": "number", "description": "重量（kg）" },
+    { "name": "dims_m", "type": "array", "description": "寸法 [幅, 奥行, 高さ]（m）" },
+    { "name": "object_type", "type": "string", "description": "荷物の種類（段ボール箱、布製バッグなど）" }
+  ]
+}

@@ -21,7 +21,8 @@
 | `docs/ACCEPTANCE.md` | テスト・受入基準、実測結果の記録方法 |
 | `docs/EVENT_RULES.md` | 提出条件と禁止事項の原文由来の要約 |
 | `docs/START_PROMPT.md` | Claude Codeに最初の1回だけ渡す依頼 |
-| `data/*.json` | **手書きの架空データ**（テスト用ワークフロー・模擬荷物マスタ・模擬スキル一覧）。Claudeの生成物・動画の解析結果ではない |
+| `app/data/*.json` | **手書きの架空データ**（テスト用ワークフロー・模擬荷物マスタ・模擬スキル一覧）。直下はシナリオv1、`app/data/scenario_v2/` はシナリオv2。Claudeの生成物・動画の解析結果ではない |
+| `materials/` | 提出動画・README向けの説明素材（システムの流れの図など）。正本は `docs/` |
 | `.claude/rules/` | 特定コードを編集するときだけ有効な技術ルール |
 | `.claude/skills/demo-audit/SKILL.md` | `/demo-audit` で手動実行する検証手順 |
 

@@ -18,6 +18,8 @@ build/
 
 # 一時的な動画・実行出力
 local_media/
+# 発表・提出用の素材（入力動画・ロゴ・実写素材など）は一旦公開しない（2026-11-06）
+materials/
 recordings/
 *.log
 

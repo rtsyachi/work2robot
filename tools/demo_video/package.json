@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "render": "node render.mjs",
-    "still": "node render.mjs --still=1,6,14,30"
+    "still": "node render.mjs --still=1,6,14,30",
+    "render:v2": "node render.mjs --scene=v2",
+    "mix:v2": "node mix_audio.mjs",
+    "still:v2": "node render.mjs --scene=v2 --still=3,18,30,50,75,95,112"
   },
   "dependencies": {
     "ffmpeg-static": "5.2.0",

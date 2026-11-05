@@ -1,0 +1,21 @@
+{
+  "master": "environment_master",
+  "note": "環境マスタ（模擬）。作業場所の設備（積付先のカゴ車・荷物の仮置き場・作業エリア）の登録値。架空の値で、実在の現場の採寸ではない。座標はカゴ車の床の中心を原点に、x＝カゴ車の幅方向、z＝奥行方向（前面の開口側が＋）、単位m。",
+  "carts": [
+    { "cart_id": "cart_std", "name": "標準カゴ車（模擬）", "inner_width_m": 1.0, "inner_depth_m": 0.75, "height_limit_m": 1.2, "max_load_kg": 150, "open_side": "front",
+      "note": "表示板：最大積載150kg、積付高さの線1.2m" }
+  ],
+  "active_cart_id": "cart_std",
+  "staging": {
+    "name": "仮置き台（パレット2列）",
+    "rows_z_m": [0.25, 1.45],
+    "first_x_m": -1.0,
+    "pitch_m": 0.6,
+    "note": "到着順に2列へ交互に並べる。カゴ車の左側、ロボットの通り道を挟む位置"
+  },
+  "work_area": {
+    "aisle_width_m": 0.9,
+    "floor": "flat",
+    "note": "仮置き台の列の間の通り道。参照情報（現時点の照合・仮想実行では使わない）"
+  }
+}
