@@ -21,9 +21,10 @@ def load(path: Path) -> dict:
 
 def main() -> int:
     batch_id = sys.argv[1] if len(sys.argv) > 1 else "video_batch"
-    m = masters.load_masters()  # Step 0 で登録したマスタ（なければ初期値）
-    objects = {o["object_id"]: o for o in masters.to_objects(m["items"])}
-    batch = next(b for b in m["items"]["batches"] if b["batch_id"] == batch_id)
+    m = masters.load_masters()  # Step 1 で登録したマスタ（なければ初期値）
+    cases = masters.cases_of(m)
+    objects = {o["object_id"]: o for o in cases["objects"]}
+    batch = next(b for b in cases["batches"] if b["batch_id"] == batch_id)
     t = run_job(masters.apply_environment(load(V2 / "job_fixture.json"), m["environment"]), load(V2 / "workflow_fixture.json"),
                 [objects[i] for i in batch["object_ids"]], load(ROOT / "data" / "skill_catalog.json"))
     print(f"[{batch['label']}]")

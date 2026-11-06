@@ -21,10 +21,11 @@
 - 破壊的Git操作、公開・push、課金を伴う外部操作は事前にユーザーの承認を得る。
 
 ## 作業するときの資料
+- 公開用の概要（プロダクト・システムの大枠・リポジトリ構成・動かし方）：`README.md`（仕様が変わったら合わせて直す。正本は `docs/`）
 - 要件・利用者・非対象：`docs/PRODUCT.md`
 - 動画の絵コンテ・日本語ナレーション：`docs/DEMO.md`
 - 入力素材の要件・シナリオv2（荷物17個・7場面）・台本・録音・制作タスク：`docs/DEMO_INPUT.md`
-- マスタ（荷物・カゴ車・仮置き場）・グラフの入出力・分岐と未知値・業務の規則（Level 1）・ハードウェア構成と能力要件：`docs/WORKFLOW_SPEC.md`（マスタの初期値は `app/data/masters/`、画面で登録した値は `local_media/masters/`）
+- 入力データの区分（マスタ＝商品・カゴ車／トランザクション＝出荷予定・出荷実績／その他＝倉庫内マップ。仮置き場・作業エリアは環境マスタに持ち画面には出さない）・グラフの入出力・分岐と未知値・業務の規則（Level 1）・ハードウェア構成と能力要件：`docs/WORKFLOW_SPEC.md`（初期値は `app/data/masters/`・`app/data/transactions/`、登録した値は `local_media/masters/`・`local_media/transactions/`。今の作業動画は `app/backend/inputs.py` の `current_video()`＝Step 2 でアップロードした動画、なければ `INPUT_VIDEO`（v5デモ）。画面は今の動画から作った解析結果だけを表示する）
 - モジュール境界・優先順：`docs/ARCHITECTURE.md`
 - 完成判定：`docs/ACCEPTANCE.md`
 - 規約：`docs/EVENT_RULES.md`
@@ -35,10 +36,10 @@
 - 環境：`python -m venv .venv` → `.venv\Scripts\python -m pip install -r app\requirements-dev.txt`
 - テスト：`.venv\Scripts\python -m pytest`（リポジトリ直下で実行）、`app/frontend` で `npm run test`。荷物ごとの経路一覧：`.venv\Scripts\python app\scripts\run_cases.py`
 - 起動：`.venv\Scripts\python -m uvicorn --app-dir app backend.api.app:app --port 8000` と `app/frontend` で `npm run dev`（http://127.0.0.1:5173）。実画面確認：起動中に `app/frontend` で `npm run screenshot`
-- サーバーはユーザーと共通の1組（API 8000・画面 5173）だけを使う。バックエンドを変えたらAPIを起動し直す（`--reload` は動画配信の接続で止まることがあるため使わない）。画面の自動確認は `npm run screenshot`、Step 4 の画面収録は `npm run record:step4`（`-- --product=aw_40f` で機種を指定）。環境変数を付けたコマンドは許可確認が出るため使わない。
+- サーバーはユーザーと共通の1組（API 8000・画面 5173）だけを使う。バックエンドを変えたらAPIを起動し直す（`--reload` は動画配信の接続で止まることがあるため使わない）。画面の自動確認は `npm run screenshot`、Step 5 の画面収録は `npm run record:step4`（`-- "--name=構成名"` で保存済みの構成を指定）。提出動画は `npm run demo:capture`（素材の撮影）→ `.venv\Scripts\python -X utf8 tools/demo_video/build_demo.py`（組み立て）→ `tools/demo_video/mix_voiceover.py`（ナレーションの合成。`docs/DEMO.md`）。環境変数を付けたコマンドは許可確認が出るため使わない。
 - 入力動画v2の制作（`tools/demo_video`）：`npm run render:v2`（映像）→ `powershell -ExecutionPolicy Bypass -File tools/demo_video/tts_provisional.ps1`（録音がないときの仮の音声）→ `npm run mix:v2`（音声の合成。`local_media/voice/` に録音があればそちらを使う）
 - 音声の文字起こし（ローカル・課金なし）：`.venv\Scripts\python app\scripts\run_transcription.py`
-- v2の観測・抽出・ハードウェア仮選定（課金あり）：`.venv\Scripts\python app\scripts\run_observation.py --v2` → `app\scripts\run_extraction.py --v2` → `app\scripts\run_hardware_selection.py`、Step 1のタスク構造は `app\scripts\run_task_structure.py`（保存済みで照合・実行のみ：各 `--latest`）。使用量の集計：`app\scripts\api_usage.py`
+- v2の観測・抽出・ハードウェア仮選定（課金あり）：`.venv\Scripts\python app\scripts\run_observation.py --v2` → `app\scripts\run_extraction.py --v2` → `app\scripts\run_hardware_selection.py`、Step 2のタスク構造は `app\scripts\run_task_structure.py`（保存済みで照合・実行のみ：各 `--latest`）。使用量の集計：`app\scripts\api_usage.py`
 - 動画→観測テキスト（課金あり）：`.venv\Scripts\python app\scripts\run_observation.py`
 - Claude API 接続確認（少額課金あり）：`.venv\Scripts\python app\scripts\check_claude_api.py`。キーはリポジトリ直下の `.env` に `ANTHROPIC_API_KEY=...` と書く（Git管理外。ひな形ファイルは置かない）。
 - Claude抽出の実行と評価（課金あり）：`.venv\Scripts\python app\scripts\run_extraction.py`。保存済み結果の評価のみ：`--latest`。正解データは `app/eval/`（アプリの入力経路から読まない）。

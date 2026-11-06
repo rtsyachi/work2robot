@@ -117,14 +117,20 @@ def main() -> int:
                 return 1
             print(f"説明: {inputs['explanation']['source_type']}（{len(inputs['explanation']['segments'])}件）"
                   f"  観測: {len(inputs['observations']['segments'])}件")
+            from backend.ai.process_structure import ProcessStructureError, attach
+            client = make_client()
             try:
-                result = extract_workflow(make_client(), inputs, catalog, scenario="v2")
-            except ExtractionError as e:
-                print(f"NG: {e}  {json.dumps(e.detail, ensure_ascii=False)[:2000]}")
+                result = extract_workflow(client, inputs, catalog, scenario="v2")
+                result = attach(result, client, inputs)  # 工程の構造（別の呼び出し）を同じ版に加える
+            except (ExtractionError, ProcessStructureError) as e:
+                print(f"NG: {e}  {json.dumps(getattr(e, 'detail', None) or getattr(e, 'errors', None), ensure_ascii=False)[:2000]}")
                 return 1
             path = save_record(result, inputs)
             record = result.to_dict()
             print(f"保存: {path}")
+            for s in record["process"]["stages"]:
+                print(f"  工程 [{s['role']}・{s['basis']}] {s['name']}：" + " → ".join(
+                    f"{n['label']}{'（規則 ' + ','.join(n['rule_refs']) + '）' if n['rule_refs'] else ''}" for n in s["nodes"]))
         meta = record["meta"]
         print(f"モデル: {meta['model']}  試行回数: {meta['attempts']}  使用量: {meta['usage']}")
         print(f"要約: {record['summary']}")

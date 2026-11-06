@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-# 判断に使う属性を、実機で得るための手段の例（模擬荷物マスタの代わり）
+# 判断に使う属性を、実機で得るための手段の例（模擬の商品・荷姿マスタの代わり）
 SENSING = {
     "material_class": "材質の判定（カメラ画像・出荷データ）",
     "fragile_content": "壊れ物表示の読取（ラベルのOCR・出荷データ）",
@@ -66,7 +66,7 @@ def _hardware_section(job_trace: dict, hardware: dict) -> tuple[dict, list[dict]
     grasp = [it["object_id"] for it in handed if "手先が非対応" in (it.get("handoff_reason") or "")]
     if grasp:
         improvements.append({"kind": "hardware", "source": "computed",
-                             "text": f"手先が {', '.join(grasp)} をつかめない。袋をつかめる手先（挟み込み・複合ハンド）への変更が考えられる"})
+                             "text": f"手先が {', '.join(grasp)} をつかめない。袋をつかめるエンドエフェクタ（2指グリッパー・複合ハンド）への変更が考えられる"})
     reach = [it["object_id"] for it in handed if "リーチ" in (it.get("handoff_reason") or "")]
     if reach:
         improvements.append({"kind": "hardware", "source": "computed",
@@ -75,7 +75,7 @@ def _hardware_section(job_trace: dict, hardware: dict) -> tuple[dict, list[dict]
     for r in results:
         if r["status"] == "ng" and r["kind"] == "capability" and r["id"].startswith("sense_"):
             improvements.append({"kind": "peripheral", "source": "computed",
-                                 "text": f"{r['label']}手段がない。センサーや計測設備（例：計量台）の追加が考えられる"})
+                                 "text": f"{r['label']}手段がない。センサーや計測設備（例：計量スケール）の追加が考えられる"})
     for h in hardware.get("improvement_hypotheses", []):
         improvements.append({"kind": h["kind"], "source": "claude", "text": h["text"]})
     product = hardware.get("product") or {}
@@ -126,7 +126,7 @@ def assess(job_trace: dict, workflow: dict, catalog: dict, confirmation_items: l
     for f in used_fields:
         sources = {it["item_trace"]["steps"][1].get("observed", {}).get(f, {}).get("source") for it in items}
         if "mock_metadata" in sources or f == "dims_m":
-            info.append(f"実機では「{FIELD_LABEL.get(f, f)}」の取得手段が必要：{SENSING.get(f, '取得方法を確認')}（今回は模擬荷物マスタ）")
+            info.append(f"実機では「{FIELD_LABEL.get(f, f)}」の取得手段が必要：{SENSING.get(f, '取得方法を確認')}（今回は模擬の商品・荷姿マスタ）")
 
     # 3. 実機PoCで確かめること（使ったスキルの未検証能力）
     poc: list[str] = []

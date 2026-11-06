@@ -1,7 +1,7 @@
 """入力動画からClaudeで観測テキストを作り、保存する（課金あり）。
 
     .venv\\Scripts\\python app\\scripts\\run_observation.py         # v1（data/demo_input/work_video.mp4）
-    .venv\\Scripts\\python app\\scripts\\run_observation.py --v2    # v2（local_media/demo_input_v2/work_video_v2.mp4、60枚ずつ分割）
+    .venv\\Scripts\\python app\\scripts\\run_observation.py --v2    # 入力の作業動画（backend/inputs.py の INPUT_VIDEO、60枚ずつ分割）
 """
 import sys
 from pathlib import Path
@@ -11,8 +11,7 @@ sys.path.insert(0, str(ROOT))
 
 from backend.ai.client import make_client  # noqa: E402
 from backend.ai.observation import ObservationError, observe_video, save_observation  # noqa: E402
-
-V2_VIDEO = ROOT.parent / "local_media" / "demo_input_v2" / "work_video_v2.mp4"
+from backend.inputs import INPUT_VIDEO as V2_VIDEO  # noqa: E402  入力の作業動画（backend/inputs.py）
 
 
 def main() -> int:

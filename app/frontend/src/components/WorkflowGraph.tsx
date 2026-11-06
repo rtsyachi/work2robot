@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { THEME } from '../lib/theme'
 import {
   Background,
   Controls,
@@ -86,7 +87,7 @@ export default function WorkflowGraph({ workflow, trace, selectedId, onSelect }:
   const edges: Edge[] = useMemo(() => workflowEdges(workflow).map((e) => {
     const on = hit.edges.has(e.id)
     const dim = trace !== null && !on
-    const color = on ? '#d9480f' : dim ? '#ced4da' : '#868e96'
+    const color = on ? THEME.brandStrong : dim ? THEME.lineStrong : THEME.muted
     return {
       id: e.id,
       source: e.source,
@@ -95,8 +96,8 @@ export default function WorkflowGraph({ workflow, trace, selectedId, onSelect }:
       type: 'smoothstep',
       animated: on,
       style: { stroke: color, strokeWidth: on ? 3 : 1.5 },
-      labelStyle: { fill: on ? '#d9480f' : '#495057', fontWeight: on ? 700 : 400 },
-      labelBgStyle: { fill: '#ffffff' },
+      labelStyle: { fill: on ? THEME.brandStrong : THEME.text2, fontWeight: on ? 700 : 400 },
+      labelBgStyle: { fill: THEME.panel },
       markerEnd: { type: MarkerType.ArrowClosed, color },
       zIndex: on ? 1 : 0,
     }
@@ -117,7 +118,7 @@ export default function WorkflowGraph({ workflow, trace, selectedId, onSelect }:
         proOptions={{ hideAttribution: true }}
         minZoom={0.2}
       >
-        <Background gap={24} color="#e9ecef" />
+        <Background gap={24} color={THEME.line} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>

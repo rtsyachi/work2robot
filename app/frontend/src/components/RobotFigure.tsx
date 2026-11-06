@@ -1,5 +1,6 @@
 // ロボット全身の模式図（SVG）。構成の部品に応じて描き分け、部品ごとにクリックできる。実在の機種の外観ではない。
 import type { CheckStatus, ConfigParts, HwCatalog } from '../types'
+import { THEME } from '../lib/theme'
 import type { PartKind } from '../lib/hwConfig'
 import { SHORT, STATUS } from '../lib/hwConfig'
 
@@ -57,7 +58,7 @@ export function PartIcon({ kind, id }: { kind: PartKind; id: string }) {
       {kind === 'end_effector' && <EffectorShape id={id} x={50} y={6} s={1.3} />}
       {kind === 'base' && id === 'wheeled_base' && (<><rect x={18} y={24} width={64} height={24} rx={6} fill="#e8590c" /><circle cx={30} cy={54} r={9} fill="#212529" /><circle cx={70} cy={54} r={9} fill="#212529" /></>)}
       {kind === 'base' && id === 'fixed_pedestal' && (<><rect x={34} y={14} width={32} height={46} rx={3} fill="#868e96" /><rect x={22} y={58} width={56} height={8} fill="#495057" /></>)}
-      {kind === 'base' && id === 'legged_humanoid' && (<><circle cx={50} cy={10} r={7} fill="#adb5bd" /><rect x={40} y={18} width={20} height={26} rx={4} fill="#5f3dc4" /><line x1={45} y1={44} x2={40} y2={66} stroke="#343a40" strokeWidth={5} /><line x1={55} y1={44} x2={60} y2={66} stroke="#343a40" strokeWidth={5} /></>)}
+      {kind === 'base' && id === 'legged_humanoid' && (<><circle cx={50} cy={10} r={7} fill="#adb5bd" /><rect x={40} y={18} width={20} height={26} rx={4} fill={THEME.brand} /><line x1={45} y1={44} x2={40} y2={66} stroke="#343a40" strokeWidth={5} /><line x1={55} y1={44} x2={60} y2={66} stroke="#343a40" strokeWidth={5} /></>)}
       {kind === 'arm' && (() => {
         const t: Record<string, [number, number]> = { arm_light: [22, 6], arm_medium: [28, 9], arm_heavy: [36, 12], arm_dual_humanoid: [18, 5] }
         const [L, w] = t[id] ?? [26, 8]
@@ -139,7 +140,7 @@ export default function RobotFigure({ cat, parts, selected, status, onPick, lock
         )}
         {legged && (
           <>
-            <rect x={142} y={g.sy - 4} width={56} height={92} rx={10} fill="#5f3dc4" />
+            <rect x={142} y={g.sy - 4} width={56} height={92} rx={10} fill={THEME.brand} />
             <line x1={158} y1={g.sy + 86} x2={150} y2={GROUND - 4} stroke="#343a40" strokeWidth={12} strokeLinecap="round" />
             <line x1={182} y1={g.sy + 86} x2={190} y2={GROUND - 4} stroke="#343a40" strokeWidth={12} strokeLinecap="round" />
           </>

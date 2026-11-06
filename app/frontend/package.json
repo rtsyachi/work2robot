@@ -10,6 +10,7 @@
     "dev:verify": "vite --host 127.0.0.1 --port 5174 --strictPort --mode verify",
     "screenshot:verify": "node scripts/screenshot.mjs --url=http://127.0.0.1:5174/",
     "record:step4": "node scripts/record_step4.mjs",
+    "demo:capture": "node scripts/demo_capture.mjs",
     "walkthrough": "node scripts/walkthrough.mjs",
     "walkthrough:verify": "node scripts/walkthrough.mjs --url=http://127.0.0.1:5174/"
   },

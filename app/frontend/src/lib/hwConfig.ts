@@ -3,15 +3,23 @@ import type { CheckStatus, ConfigParts, HwCatalog, HwComponent, Product, Product
 
 export type PartKind = 'base' | 'arm' | 'end_effector' | 'sensor' | 'peripheral'
 export const PART_TITLE: Record<PartKind, string> = {
-  base: '移動方式', arm: 'アーム本体', end_effector: 'エンドエフェクタ（手先）', sensor: 'センサー', peripheral: '周辺設備・拡張モジュール',
+  base: '移動方式', arm: 'アーム本体', end_effector: 'エンドエフェクタ', sensor: 'センサー', peripheral: '周辺機器',
 }
-export const SHORT: Record<PartKind, string> = { base: '移動方式', arm: 'アーム', end_effector: '手先', sensor: 'センサー', peripheral: '周辺設備' }
+export const SHORT: Record<PartKind, string> = { base: '移動方式', arm: 'アーム', end_effector: 'エンドエフェクタ', sensor: 'センサー', peripheral: '周辺機器' }
 export const TYPE_LABEL: Record<Product['type'], string> = { fixed: '固定式', mobile: '車輪移動式', humanoid: 'ヒューマノイド' }
+// 画面の3区分（仕様照合の結果 ok／partial／unknown／ng を、対応可能・対応不可・判断不可にまとめて見せる。照合ロジックは変えない）
+export type Verdict = 'can' | 'cannot' | 'unknown'
+export const VERDICT_OF: Record<CheckStatus, Verdict> = { ok: 'can', ng: 'cannot', partial: 'unknown', unknown: 'unknown' }
+export const VERDICT: Record<Verdict, { text: string; cls: string; mark: string; meaning: string }> = {
+  can: { text: '対応可能', cls: 'st-ok', mark: '○', meaning: '現在の構成で、既知の業務要求を仕様上満たす（仕様・模擬条件に基づく評価で、実機での動作成功を保証しない）' },
+  cannot: { text: '対応不可', cls: 'st-ng', mark: '×', meaning: '現在の構成では、既知の業務要求を仕様上満たせない' },
+  unknown: { text: '判断不可', cls: 'st-unknown', mark: '？', meaning: '仕様情報や検証結果が不足し、対応可否を判断できない（一部の荷物だけ満たす場合を含む）' },
+}
 export const STATUS: Record<CheckStatus, { text: string; cls: string; mark: string; meaning: string }> = {
-  ok: { text: '仕様上対応', cls: 'st-ok', mark: '○', meaning: '仮想カタログの定義値では満たす（実機での成立は未検証）' },
-  partial: { text: '一部対応', cls: 'st-partial', mark: '△', meaning: '一部の荷物・場面だけ満たす' },
-  unknown: { text: '未確認', cls: 'st-unknown', mark: '？', meaning: '仮想的には進めるが、実機PoCで確かめる' },
-  ng: { text: '不足', cls: 'st-ng', mark: '×', meaning: '満たす能力がない・足りない' },
+  ok: VERDICT.can,
+  partial: { ...VERDICT.unknown, meaning: '一部の荷物・場面だけ満たすため、全体としては判断できない' },
+  unknown: VERDICT.unknown,
+  ng: VERDICT.cannot,
 }
 const CAP_TO: Record<string, CheckStatus> = { supported: 'ok', partial: 'partial', unverified: 'unknown', unsupported: 'ng' }
 const RANK: CheckStatus[] = ['ok', 'partial', 'unknown', 'ng']

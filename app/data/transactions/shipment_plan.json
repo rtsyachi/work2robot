@@ -1,0 +1,183 @@
+{
+  "data": "shipment_plan",
+  "category": "transaction",
+  "note": "出荷予定（トランザクション、模擬）。1行＝出荷の商品1つ（出荷日・出荷ID・出荷先・商品・数量＝ケース数）。同じ出荷IDの行の並び順が仮置き場への到着順。架空の値で、実在の出荷データではない。",
+  "plan": [
+    {
+      "line_id": "video_batch-01",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "L1",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-02",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "H1",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-03",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "M",
+      "quantity": 6
+    },
+    {
+      "line_id": "video_batch-04",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "S1",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-05",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "H2",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-06",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "L2",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-07",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "H3",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-08",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "W1",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-09",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "H4",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-10",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "L3",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-11",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "W2",
+      "quantity": 1
+    },
+    {
+      "line_id": "video_batch-12",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "destination": "店舗A（模擬）",
+      "product_id": "S2",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-01",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "M",
+      "quantity": 4
+    },
+    {
+      "line_id": "alt_batch-02",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "U1",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-03",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "H2",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-04",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "S1",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-05",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "L1",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-06",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "H1",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-07",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "W1",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-08",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "L2",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-09",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "S2",
+      "quantity": 1
+    },
+    {
+      "line_id": "alt_batch-10",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "destination": "店舗B（模擬）",
+      "product_id": "H3",
+      "quantity": 1
+    }
+  ]
+}

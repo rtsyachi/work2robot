@@ -112,9 +112,24 @@ export type Readiness = {
   improvements_note?: string
 }
 export type Level1Graph = {
-  nodes: { id: string; type: WfNode['type']; label: string }[]
-  edges: { source: string; target: string; field: string }[]
+  nodes: { id: string; type: WfNode['type'] | 'stage' | 'task'; label: string }[]
+  edges: { source: string; target: string; field: string; label?: string }[]
 }
+
+/** 工程の構造（Level 1 の工程と、工程ごとの詳細＝Level 2）。item_loop 以外の工程は仮想実行の対象外（表示・確認用） */
+export type Basis = 'video_observation' | 'spoken_instruction' | 'ai_hypothesis' | 'human_confirmed'
+/** タスクの判断条件：基準名・使い方（優先順位・例外）・参照する業務の規則・根拠 */
+export type Criterion = { name: string; how: string; rule_refs: string[]; basis: Basis; source_evidence: Evidence[] }
+export type ProcessNode = {
+  id: string; type: 'task' | 'decision'; label: string; detail: string
+  criteria?: Criterion[]   // 判断条件（タスクの中の判断ロジック）。古い版にはない
+  rule_refs: string[]; conditions: string[]; confirmation_refs?: string[]; basis: Basis; source_evidence: Evidence[]
+}
+export type Stage = {
+  id: string; name: string; purpose: string; role: 'item_loop' | 'final_check' | 'other'; basis: Basis
+  source_evidence: Evidence[]; nodes: ProcessNode[]; edges: { source: string; target: string; label: string }[]
+}
+export type Process = { stages: Stage[]; warnings?: { code: string; node_id: string; message: string }[] }
 
 export type Fixtures = {
   notice: string
@@ -164,7 +179,8 @@ export type JobItem = {
   cart_after?: { count: number; load_kg: number; com_offset_m: number }
 }
 
-// ---- マスタ（Step 0） ----
+// ---- マスタ（Step 1） ----
+/** 実行器などが使う荷物1個（出荷明細から組み立てたもの。画面では参照のみ） */
 export type ItemMasterRow = {
   object_id: string
   name: string
@@ -174,8 +190,20 @@ export type ItemMasterRow = {
   dims_m: [number, number, number] | null
   fragile_content: boolean | null
   handling_note: string
+  product_id?: string
 }
-export type ItemMaster = { master: string; note: string; items: ItemMasterRow[]; batches: Batch[]; updated_at?: string }
+/** 商品マスタの1行（荷姿・ケース入数・ボール入数と、1ケースの重量・寸法を含む） */
+export type ProductRow = {
+  product_id: string; name: string; packing_type: string; material_class: 'rigid' | 'soft' | null
+  case_qty: number | null; ball_qty: number | null; weight_kg: number | null; dims_m: [number, number, number] | null
+  fragile_content: boolean | null; handling_note: string
+}
+/** 商品マスタ（product_master.json） */
+export type ItemMaster = { master: string; note: string; products: ProductRow[]; updated_at?: string }
+/** 出荷予定の1行（出荷の商品1つ）。同じ出荷IDの行の並び順が到着順 */
+export type ShipmentLine = { line_id: string; shipped_on: string; shipment_id: string; destination: string; product_id: string; quantity: number }
+/** 出荷予定（shipment_plan.json） */
+export type ShipmentMaster = { data: string; note: string; plan: ShipmentLine[]; updated_at?: string }
 export type CartMaster = {
   cart_id: string; name: string; inner_width_m: number; inner_depth_m: number; height_limit_m: number; max_load_kg: number
   open_side: string; note?: string
@@ -188,8 +216,47 @@ export type EnvMaster = {
 }
 export type MasterIssue = { target: string; message: string }
 export type MasterValidation = { ok: boolean; errors: MasterIssue[]; warnings: MasterIssue[] }
+/** 受け付けるマスタの定義（backend/workflow/masters.py の MASTER_DEFS） */
+export type MasterField = {
+  key: string; label: string; type: 'text' | 'number' | 'enum' | 'bool' | 'dims' | 'ids' | 'numbers'
+  need: 'required' | 'nullable' | 'optional'; unit?: string; min?: number; gt0?: boolean; note?: string
+  values?: { value: string; label: string }[]
+}
+export type MasterDef = {
+  table: 'products' | 'batches' | 'carts' | 'results'; group: string; label: string
+  file: 'items' | 'environment' | 'shipments' | 'shipment_results'; path: string; kind: 'list' | 'single'; key?: string; active?: string
+  purpose: string; used_in: string[]; fields: MasterField[]
+  category: 'master' | 'transaction' | 'other'; who: string; method: string; readonly?: boolean
+}
+export type DataCategory = 'master' | 'transaction' | 'other'
+/** 倉庫内マップ（平面図・参照のみ・模擬）。rect＝[x, y, 幅, 奥行]（m） */
+export type WarehouseMap = {
+  name: string; note: string; units: string; origin: string; size: [number, number]; source: string; relation_to_masters: string
+  elements: { id: string; kind: string; label: string; rect: [number, number, number, number]; basis: 'observed' | 'mock'; dims: 'mock' | 'master'; note?: string }[]
+}
 export type Masters = {
-  items: ItemMaster; environment: EnvMaster; source: 'default' | 'registered'; updated_at: string | null; validation: MasterValidation
+  items: ItemMaster; environment: EnvMaster; shipments: ShipmentMaster; source: 'default' | 'registered'; updated_at: string | null; validation: MasterValidation
+  definitions: MasterDef[]; categories: Record<DataCategory, { label: string; note: string }>
+  shipment_results: { note: string; results: Record<string, unknown>[] }   // 出荷実績（参照のみ・模擬）
+  warehouse_map: WarehouseMap
+  parcels: ItemMasterRow[]   // 出荷明細から組み立てた荷物（1個ずつ・参照のみ）
+  batches: Batch[]           // 出荷ヘッダ＋明細から組み立てた便（荷物IDの到着順）
+}
+/** トランザクション：作業動画と解析結果の状況（backend/inputs.py） */
+export type AnalysisRow = {
+  kind: string; label: string; step: number; engine: string; command: string
+  status: 'ok' | 'mismatch' | 'unknown' | 'missing'; file: string | null; created_at: string | null; model: string | null; video: string | null
+}
+export type InputsStatus = {
+  video: { file: string; exists: boolean; size_mb?: number; duration_s?: number; resolution?: string; fps?: number; has_audio?: boolean }
+  analysis: { video: string; items: AnalysisRow[]; ok: boolean; mismatch: string[]; missing: string[] }
+  is_demo: boolean  // 今の動画が v5デモ（アップロードなし）か
+  job: AnalysisJob
+}
+/** Step 2「解析開始」の簡易な状態 */
+export type AnalysisJob = {
+  state: 'idle' | 'running' | 'done' | 'error'; stage: string | null; stages: string[]; video: string | null
+  error: string | null; started_at: string | null; finished_at: string | null
 }
 
 export type RobotSummary = {
@@ -263,6 +330,23 @@ export type HwComponent = {
 export type ConfigParts = { base: string; arm: string; end_effector: string; sensors: string[]; peripherals: string[] }
 // 仮想メーカーの機種と、その機種が認めるオプションで組んだ構成
 export type ProductConfig = { product_id: string; end_effector: string; sensors: string[]; peripherals: string[] }
+/** 保存したロボット構成（Step 4 で保存 → Step 5 で選ぶ）。id='claude' は Claude の仮選定（削除不可） */
+export type SavedRobotConfig = {
+  id: string; name: string; source: 'claude' | 'saved'; readonly: boolean; saved_at: string | null; config: ProductConfig
+  /** 選定時のシナリオ・ワークフローの版・出荷予定と、その要件での照合の件数（古い保存にはない） */
+  basis?: { scenario_id?: string; workflow_id: string | null; batch_id: string; counts?: Record<'ok' | 'partial' | 'unknown' | 'ng', number> }
+}
+/** シナリオ（業務単位）。動画・出荷予定はシナリオに紐づくデータで、IDには含めない */
+export type Scenario = { scenario_id: string; type: string; name: string; batch_id: string
+  resolved_confirmations?: Record<string, { at: string; note: string }>   // 消し込んだ確認事項（確認事項ID → 日時・メモ）
+}
+/** シナリオに紐づくデータの参照（既存のファイル名をIDとして使う） */
+export type ScenarioRefs = { scenario_id: string; video_id: string; batch_id: string; workflow_id: string | null; selection_id: string | null }
+/** 保存した仮想実行の結果の参照（Step 6 が「どの版・構成・実行の評価か」を示す） */
+export type Execution = {
+  execution_id: string; created_at: string; scenario_id: string; video_id: string; workflow_id: string | null
+  robot_config_id: string; robot_config_name: string; batch_id: string; placed: number; handed_off: number
+}
 export type Maker = { id: string; name: string; type: 'fixed' | 'mobile' | 'humanoid'; philosophy: string; strengths: string }
 export type Product = {
   id: string; maker_id: string; name: string; type: 'fixed' | 'mobile' | 'humanoid'; use_case: string; structure: string
@@ -313,9 +397,36 @@ export type V2Job = {
   cart: { width_m: number; depth_m: number; height_m: number; max_load_kg?: number }
   rules: JobRule[]
   unsupported_rules: { text: string; source_evidence: Evidence[] }[]
+  balance_tolerance_m?: number | null
+  balance_tolerance_evidence?: Evidence[]
 }
 
-// Step 1：動画の時間軸に沿ったタスク構造（backend/ai/task_structure.py）。時刻は観測・発話から計算した秒
+/** Step 3 の版（直した結果は抽出の新しい版として保存する） */
+export type Revision = {
+  of: string; from?: string; by: 'user' | 'claude' | 'revert'
+  reason?: string; instruction?: string; focus?: string; to?: string; ops?: Record<string, unknown>[]
+}
+export type EditOp =
+  | { op: 'rule'; type: string; enabled: boolean; note?: string }
+  | { op: 'decision'; node_id: string; operator?: string; value?: string | number | boolean | null; definition_status: 'defined' | 'needs_confirmation'; confirmation_note?: string }
+  | { op: 'balance_tolerance'; value: number | null }
+  | { op: 'criteria'; stage_id: string; node_id: string; criteria: { name: string; how: string; rule_refs: string[] }[] }
+export type RuleDiff = { type: string; label: string; note?: string; before?: string; after?: string }
+export type Proposal = {
+  id: string; base: string; instruction: string; focus: string; summary: string; model: string
+  confirmation_items: ConfirmationItem[]
+  diff: {
+    rules_added: RuleDiff[]; rules_removed: RuleDiff[]; rules_changed: RuleDiff[]
+    nodes_added: { id: string; label: string; type: string }[]; nodes_removed: { id: string; label: string; type: string }[]
+    nodes_changed: { id: string; label: string; before: Record<string, unknown>; after: Record<string, unknown> }[]
+    unsupported_before: string[]; unsupported_after: string[]
+    confirmations_resolved: string[]; confirmations_added: string[]
+    stages_added?: string[]; stages_removed?: string[]
+    stages_changed?: { stage: string; added: string[]; removed: string[]; changed: string[] }[]
+  }
+}
+
+// Step 2：動画の時間軸に沿ったタスク構造（backend/ai/task_structure.py）。時刻は観測・発話から計算した秒
 export type TaskRule = {
   id: string
   text: string
@@ -352,12 +463,22 @@ export type V2State = {
   batches: Batch[]
   requirements: Requirement[]
   selection: Selection | null
+  selection_stale: boolean  // 仮選定が、今のワークフローとは別の版から作られている
+  scenario: Scenario
+  refs: ScenarioRefs
   configs: HwConfig[]
   video_url: string
   masters: Masters
+  inputs: InputsStatus
 }
 
-export type V2Run = { job: JobTrace; check: HardwareCheck | null; readiness: Readiness }
+/** 模擬の速度仕様からのロボット作業時間の推定（backend/workflow/time_estimate.py）。null＝未算出 */
+export type TimeEstimate = {
+  total_s: number; final_check_s: number; basis: 'mock_spec'; note: string; excludes: string[]
+  items: { object_id: string; seconds: number; travel_s: number; outcome: 'placed' | 'handed_off' }[]
+  params: Record<string, string | number>
+}
+export type V2Run = { job: JobTrace; check: HardwareCheck | null; readiness: Readiness; time_estimate?: TimeEstimate | null; execution?: Execution }
 
 export type Segment = { id: string; t: string; text: string; objects?: string[] }
 export type TextInput = { source_type: string; note: string; segments: Segment[] }
@@ -388,11 +509,13 @@ export type Extraction = {
   confirmation_items: ConfirmationItem[]
   summary: string
   validation: Validation
+  process?: Process
   meta: {
     model: string
     attempts: number
     fallback_used: boolean
     observation_source?: string
     usage: { input_tokens: number; output_tokens: number }[]
+    revision?: Revision
   }
 }

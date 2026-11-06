@@ -1,8 +1,8 @@
-"""作業動画の時間軸に沿ったタスク構造（Step 1「作業動画解析」）。
+"""作業動画の時間軸に沿ったタスク構造（Step 2「シナリオ作成」）。
 
 動画の観測テキスト（O…）と音声の文字起こし（S…）から、Claudeが大タスク・小タスク・判断条件（作業ルール候補）を
 まとめる。Claudeには時刻を書かせず、観測ID・発話IDの範囲だけを選ばせる。時刻は元の観測・発話の時刻から
-決定的に計算する（根拠のない時刻を作らない）。業務ワークフロー（Step 2）とは別物で、時間順の作業の理解に使う。
+決定的に計算する（根拠のない時刻を作らない）。業務ワークフロー（Step 3）とは別物で、時間順の作業の理解に使う。
 """
 from __future__ import annotations
 
@@ -168,20 +168,27 @@ def build(raw: dict, observations: list[dict], speech: list[dict], duration: flo
     return {"major_tasks": majors, "speech_links": links, "unresolved": raw["unresolved"], "duration": duration}, errors
 
 
-def build_user_content(observations: list[dict], speech: list[dict]) -> str:
+SUPPLEMENT_NOTE = ("利用者が画面で入力した補足（未検証）。動画・発話の根拠ではない。補足だけを根拠にした判断条件は "
+                   "kind=ai_hypothesis・definition_status=needs_confirmation とし、confirmation_note に「補足のみ」と書く。")
+
+
+def build_user_content(observations: list[dict], speech: list[dict], supplement: str = "") -> str:
     obs = [{"id": o["id"], "t": o["t"], "text": o["text"], "objects": o.get("objects", [])} for o in observations]
     sp = [{"id": s["id"], "start": fmt_time(s["start"]), "end": fmt_time(s["end"]), "text": s["text"]} for s in speech]
-    return ("次の観測と発話から、動画の時間軸に沿った大タスク・小タスク・判断条件をまとめてください。"
+    body = ("次の観測と発話から、動画の時間軸に沿った大タスク・小タスク・判断条件をまとめてください。"
             "大タスクには出力順に T1, T2, … の番号が付きます（speech_links の task_id もこの番号）。\n\n"
             f"## 動画の観測（Claudeがフレームから作成）\n```json\n{json.dumps(obs, ensure_ascii=False, indent=1)}\n```\n\n"
             f"## 作業者の説明（音声の文字起こし）\n```json\n{json.dumps(sp, ensure_ascii=False, indent=1)}\n```")
+    if supplement.strip():  # 入力がないときは従来と同じ入力（v5の結果・評価を変えない）
+        body += f"\n\n## 利用者の補足（未検証）\n{SUPPLEMENT_NOTE}\n\n{supplement.strip()}"
+    return body
 
 
 def structure_tasks(client: Any, observations: list[dict], speech: list[dict], duration: float, *,
-                    effort: str = "high", max_attempts: int = 2) -> dict:
+                    effort: str = "high", max_attempts: int = 2, supplement: str = "") -> dict:
     """Claudeでタスク構造を作り、IDと範囲を検査して時刻を付ける。検査に通らなければ内容を伝えて作り直させる。"""
     rule_types = "、".join(SUPPORTED_RULES)
-    messages: list[dict] = [{"role": "user", "content": build_user_content(observations, speech)}]
+    messages: list[dict] = [{"role": "user", "content": build_user_content(observations, speech, supplement)}]
     usage, raw_outputs, errors = [], [], []
     for attempt in range(1, max_attempts + 1):
         with client.beta.messages.stream(

@@ -45,7 +45,7 @@ def test_schema_limits_choice_to_catalog_products(ctx):
     schema = hs.output_schema(hw)
     assert count_unions(schema) <= 16
     cfg = schema["properties"]["config"]["properties"]
-    assert cfg["product_id"]["enum"] == ["aw_40f", "rm_20", "rm_10", "hm_1"]   # カタログの機種だけ
+    assert cfg["product_id"]["enum"] == ["aw_40f", "rm_20", "rm_10", "hm_1", "hm_2"]   # カタログの機種だけ
     assert "base" not in cfg and "arm" not in cfg                                 # 固定構造は選ばせない
 
 

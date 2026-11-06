@@ -1,26 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { checkV2, fetchV2State, runV2 } from './api'
-import type { HardwareCheck, HwConfig, ProductConfig, RobotSummary, V2Run, V2State } from './types'
+import { checkV2, fetchLatestExecution, fetchRobotConfigs, fetchV2State, runV2, setScenarioBatch } from './api'
+import type { HardwareCheck, HwConfig, ProductConfig, RobotSummary, SavedRobotConfig, V2Run, V2State } from './types'
 import StepNav, { type StepDef } from './components/StepNav'
 import type { SegmentMap } from './components/Evidence'
-import MasterStep from './steps/MasterStep'
+import MasterStep, { AnalysisMismatch } from './steps/MasterStep'
 import AnalysisStep from './steps/AnalysisStep'
+import StaleSelection from './components/StaleSelection'
 import WorkflowStep from './steps/WorkflowStep'
 import HardwareStep from './steps/HardwareStep'
-import ExecutionStep from './steps/ExecutionStep'
+import ExecutionStep, { RUN_MIN_MS } from './steps/ExecutionStep'
 import EvaluationStep from './steps/EvaluationStep'
-import { configKey, diffFromDefault, initialConfig, product, toParts } from './lib/hwConfig'
+import { configKey, initialConfig, product, toParts } from './lib/hwConfig'
 
-const TITLES: Record<number, string> = { 0: 'マスタ登録', 1: '作業動画解析', 2: 'ワークフロー生成・確認', 3: 'ロボット構成の仮選定', 4: '仮想ロボット実行', 5: '導入前評価' }
-const PURPOSE: Record<number, string> = {
-  0: '荷物マスタ（寸法・重量・材質など）と環境マスタ（カゴ車・仮置き場・作業エリア）を登録します。以降のステップはすべてこの値を前提に動きます。',
-  1: '動画を再生すると、いま人が行っている作業（大タスク・小タスク）と判断理由が右側に切り替わって表示されます。',
-  2: '業務全体（Level 1）と荷物1個の判断（Level 2）を確認します。荷物を選ぶと、その荷物が通った経路が光ります。',
-  3: '仮想メーカー3社の機種から選び、その機種が認めるオプション（手先・センサーなど）を選ぶと、業務の要求への対応が変わります。',
-  4: '選んだ構成で仮想ロボットに業務を実行させます。3D・Level 1・Level 2は同じ実行トレースから動きます。',
-  5: '仮想実行の結果と、導入に向けて改善・確認すべきことを整理します。',
+const TITLES: Record<number, string> = { 0: 'データ確認', 1: 'シナリオ作成', 2: 'ワークフロー確認', 3: 'ロボット構成', 4: 'シミュレーション実行', 5: 'シミュレーション評価' }
+// 画面名の横に出す、その画面で行うことの一言
+const SUBTITLES: Record<number, string> = {
+  0: '商品・カゴ車・出荷予定など、前提となるデータを確認・修正する',
+  1: '業務シナリオに作業動画と出荷予定を紐づけ、ワークフローを生成する',
+  2: '生成されたワークフローの工程・タスク・判断条件を確認・修正する',
+  3: '業務要件を満たすロボットの機種と部品を選び、構成を確定する',
+  4: '選んだ構成で業務を仮想実行し、ロボットの動作を3Dで確認する',
+  5: 'シミュレーション結果から、達成状況・効果見通し・残存課題を評価する',
 }
-const NEXT: Record<number, string> = { 0: '作業動画を解析する', 1:'ワークフローを確認する', 2: 'ロボット構成を確認する', 3: 'この構成で仮想実行へ', 4: '導入前評価を見る' }
+// 表示上のステップ番号は 1 始まり（内部の step は 0〜5 のまま）
+const NO = (step: number) => step + 1
 
 type Checked = { check: HardwareCheck; profile: RobotSummary; source: 'claude' | 'custom' }
 
@@ -29,7 +32,8 @@ export default function App() {
   const [step, setStep] = useState(0)
   const [menu, setMenu] = useState(false)
   // 工程メニューのピン止め（この端末のブラウザに覚えておく）
-  const [pinned, setPinnedRaw] = useState(() => { try { return localStorage.getItem('w2r.navPinned') === '1' } catch { return false } })
+  // 初期はピン止め（左に常に表示）。外した設定だけブラウザに覚える
+  const [pinned, setPinnedRaw] = useState(() => { try { return localStorage.getItem('w2r.navPinned') !== '0' } catch { return true } })
   const setPinned = (p: boolean) => { setPinnedRaw(p); try { localStorage.setItem('w2r.navPinned', p ? '1' : '0') } catch { /* 保存できなくても動く */ } }
   const [cfg, setCfg] = useState<ProductConfig | null>(null)
   const [batchId, setBatchId] = useState('video_batch')
@@ -39,20 +43,52 @@ export default function App() {
   const [running, setRunning] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState<SavedRobotConfig[]>([])   // 保存したロボット構成（Step 4 で保存 → Step 5 で選ぶ）
+  const [execId, setExecId] = useState<string | null>(null)     // Step 5 で選んだ構成
 
-  useEffect(() => {
-    fetchV2State().then((s) => { setSt(s); setCfg(initialConfig(s)) }).catch((e) => setError(String(e)))
+  const loadSaved = useCallback((select?: string) => {
+    fetchRobotConfigs().then((list) => {
+      setSaved(list)
+      setExecId((cur) => select ?? (cur && list.some((c) => c.id === cur) ? cur : list[0]?.id ?? null))
+    }).catch((e) => setError(String(e)))
   }, [])
+  useEffect(() => {
+    fetchV2State().then((s) => { setSt(s); setCfg(initialConfig(s)); setBatchId(s.refs.batch_id) }).catch((e) => setError(String(e)))
+    loadSaved()
+  }, [loadSaved])
   useEffect(() => {
     if (!st || logicRuns[batchId]) return
     runV2(null, batchId).then((r) => setLogicRuns((m) => ({ ...m, [batchId]: r }))).catch((e) => setError(String(e)))
   }, [st, batchId, logicRuns])
-  // 構成が変わるたびに、業務要求との照合を取り直す（同じ構成は再利用）
-  const ckey = cfg ? configKey(cfg) : ''
+  // 構成または出荷予定が変わるたびに、業務要件との照合を取り直す（同じ組み合わせは再利用）。Step 4 と Step 5 で同じ照合を使う
+  const ckey = cfg ? `${configKey(cfg)}|${batchId}` : ''
   useEffect(() => {
     if (!cfg || checks[ckey]) return
-    checkV2(cfg).then((r) => setChecks((m) => ({ ...m, [ckey]: r }))).catch((e) => setError(String(e)))
-  }, [cfg, ckey, checks])
+    checkV2(cfg, batchId).then((r) => setChecks((m) => ({ ...m, [ckey]: r }))).catch((e) => setError(String(e)))
+  }, [cfg, ckey, checks, batchId])
+  const exec0 = saved.find((c) => c.id === execId) ?? null
+  const ekey = exec0 ? `${configKey(exec0.config)}|${batchId}` : ''
+  useEffect(() => {
+    if (!exec0 || checks[ekey]) return
+    checkV2(exec0.config, batchId).then((r) => setChecks((m) => ({ ...m, [ekey]: r }))).catch((e) => setError(String(e)))
+  }, [exec0, ekey, checks, batchId])
+  // 保存済みの実行結果があれば読み込む（再読み込みしても Step 5・6 で参照できる）
+  const [tried, setTried] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    if (!exec0 || !ekey || runs[ekey] || tried[ekey] || !st) return
+    setTried((m) => ({ ...m, [ekey]: true }))
+    fetchLatestExecution(exec0.id, batchId).then((r) => {
+      if (!r) return
+      const hc: HwConfig = { config_id: configKey(exec0.config), label: exec0.name, source: exec0.source === 'claude' ? 'claude' : 'custom',
+        ...toParts(st.hw_catalog, exec0.config), product_id: exec0.config.product_id }
+      setRuns((m) => (m[ekey] ? m : { ...m, [ekey]: { config: hc, run: r } }))
+    }).catch(() => undefined)
+  }, [exec0, ekey, runs, tried, batchId, st])
+  // 出荷予定（シナリオの対象）を変える：シナリオに記録し、業務要件を取り直す
+  const changeBatch = (b: string) => {
+    setBatchId(b)
+    setScenarioBatch(b).then(() => fetchV2State()).then((s) => setSt(s)).catch((e) => setError(String(e)))
+  }
 
   const segments: SegmentMap = useMemo(() => {
     const map: SegmentMap = {}
@@ -71,27 +107,41 @@ export default function App() {
     }).catch((e) => setError(String(e)))
   }, [])
 
+  // 動画を変えた・解析が終わったら、状態を取り直し、構成（Claudeの仮選定）と照合・実行の結果を作り直す
+  const onInputsChanged = useCallback(() => {
+    fetchV2State().then((s) => {
+      setSt(s); setCfg(initialConfig(s))
+      setChecks({}); setRuns({}); setLogicRuns({})
+    }).catch((e) => setError(String(e)))
+    loadSaved()
+  }, [loadSaved])
+
   if (error && !st) return <div className="fatal">{error}</div>
   if (!st || !cfg) return <div className="fatal">読み込み中…</div>
 
   const prod = product(st.hw_catalog, cfg.product_id)
-  const changed = diffFromDefault(st.hw_catalog, cfg).length > 0
   const hw = checks[ckey] ?? null
-  const config: HwConfig = {
-    config_id: ckey, label: `${prod?.name ?? cfg.product_id}${changed ? '（オプション変更）' : ''}`,
-    source: hw?.source === 'claude' ? 'claude' : 'custom', ...toParts(st.hw_catalog, cfg), product_id: cfg.product_id,
-  }
-  const key = `${ckey}|${batchId}`
-  const run = runs[key]?.run ?? null
+  // Step 5・6 は、Step 4 で保存した構成（または Claude の仮選定）から選んだものを使う
+  const exec = exec0
+  const execKey = exec ? configKey(exec.config) : ''
+  const config: HwConfig | null = exec ? {
+    config_id: execKey, label: exec.name,
+    source: exec.source === 'claude' ? 'claude' : 'custom', ...toParts(st.hw_catalog, exec.config), product_id: exec.config.product_id,
+  } : null
+  const key = ekey
+  const run = exec ? runs[key]?.run ?? null : null
+  const execCheck = exec ? checks[ekey]?.check ?? null : null
   const ext = st.extraction
   const otherRun = Object.keys(runs).some((k) => k !== key)
   const sameBatchRuns = Object.entries(runs).filter(([k]) => k.endsWith(`|${batchId}`)).map(([, v]) => v)
 
   async function doRun() {
+    if (!exec || !config) return
     setRunning(true)
     setError(null)
     try {
-      const r = await runV2({ ...cfg!, label: config.label }, batchId)
+      // 実行は数百ミリ秒で終わるが、進み具合を見せてからプレビューを出す（最短 RUN_MIN_MS 待つ）
+      const [r] = await Promise.all([runV2({ ...exec.config, label: exec.name }, batchId, exec.id), new Promise((ok) => setTimeout(ok, RUN_MIN_MS))])
       setRuns((m) => ({ ...m, [key]: { config, run: r } }))
     } catch (e) {
       setError(String(e))
@@ -103,10 +153,10 @@ export default function App() {
   const c = hw?.check.counts
   const mv = st.masters.validation
   const steps: StepDef[] = [
-    { id: 0, title: TITLES[0], status: !mv.ok ? 'failed' : mv.warnings.length ? 'warn' : 'done', note: `荷物${st.masters.items.items.length}・${st.masters.source === 'registered' ? '登録済み' : '初期値'}` },
+    { id: 0, title: TITLES[0], status: !mv.ok ? 'failed' : mv.warnings.length ? 'warn' : 'done', note: `商品${st.masters.items.products.length}・${st.masters.source === 'registered' ? '登録済み' : '初期値'}` },
     { id: 1, title: TITLES[1], status: st.tasks ? 'done' : ext?.inputs ? 'warn' : 'todo', note: st.tasks ? `大タスク${st.tasks.major_tasks.length}` : undefined },
     { id: 2, title: TITLES[2], status: !ext ? 'todo' : !ext.validation.ok ? 'failed' : ext.confirmation_items.length ? 'warn' : 'done', note: ext ? `確認事項${ext.confirmation_items.length}` : undefined },
-    { id: 3, title: TITLES[3], status: !c ? 'todo' : c.ng || c.partial || c.unknown ? 'warn' : 'done', note: c ? `${prod?.name.split(' ')[0] ?? ''}・不足${c.ng}・未確認${c.unknown}` : undefined },
+    { id: 3, title: TITLES[3], status: saved.some((x) => x.source === 'saved') ? 'done' : c ? 'warn' : 'todo', note: `${prod?.name.split(' ')[0] ?? ''}・保存${saved.filter((x) => x.source === 'saved').length}件` },
     { id: 4, title: TITLES[4], status: running || playing ? 'running' : run ? (run.job.end.handed_off ? 'warn' : 'done') : otherRun ? 'stale' : 'todo', note: run ? `配置${run.job.end.placed}/${run.job.items.length}` : undefined },
     { id: 5, title: TITLES[5], status: run ? 'done' : otherRun ? 'stale' : 'todo' },
   ]
@@ -114,43 +164,40 @@ export default function App() {
   return (
     <div className={`shell ${pinned ? 'nav-pinned' : ''}`}>
       <header className="topbar">
-        <button className="menu-btn" onClick={() => (pinned ? setPinned(false) : setMenu(!menu))} aria-label="工程メニュー"
-          title={pinned ? 'ピン止めを外してメニューを隠す' : '工程メニュー'} data-testid="menu-btn">
-          <span /><span /><span />
-        </button>
-        <img src="/work2robot_logo.png" alt="Work2Robot" className="logo" data-testid="logo" />
+        {/* ロゴと三本線はピン止めメニューの中。ピン止めを外したときだけ、メニューを開くためにここに出す */}
+        {!pinned && <>
+          <button className="menu-btn" onClick={() => setMenu(!menu)} aria-label="工程メニュー" title="工程メニュー" data-testid="menu-btn">
+            <span /><span /><span />
+          </button>
+          <img src="/work2robot_logo.png" alt="Work2Robot" className="logo" data-testid="logo" />
+        </>}
         <span className="cur-step" data-testid="cur-step">
-          <span className={`step-no-mini st-${steps.find((s) => s.id === step)?.status}`}>{step}</span>{TITLES[step]}
+          <span className="cur-no">{NO(step)}</span>{TITLES[step]}
         </span>
+        <span className="cur-sub" data-testid="cur-sub">{SUBTITLES[step]}</span>
         {/* Claudeの保存済み結果がなく手書きの業務定義を表示しているときだけ、その旨を出す */}
         {!ext && <span className="badge badge-info" data-testid="source-badge">{st.notice}</span>}
-        <label className="cond">荷物の条件
-          <select value={batchId} onChange={(e) => setBatchId(e.target.value)} data-testid="batch">
-            {st.batches.map((b) => <option key={b.batch_id} value={b.batch_id}>{b.label}</option>)}
-          </select>
-        </label>
+        {/* 対象のシナリオは各画面の上部の帯（Step 3〜6）で示すので、右上には出さない */}
       </header>
       <StepNav steps={steps} current={step} onGo={setStep} open={menu} onClose={() => setMenu(false)} pinned={pinned} onPin={setPinned} />
-      <div className="step-head">
-        <span className="step-purpose"><strong>Step {step}：{TITLES[step]}</strong>　{PURPOSE[step]}</span>
-        {step === 4 && !run && otherRun && <span className="hint">構成または条件を変えたため、この組み合わせでは未実行です</span>}
-        {error && <span className="error inline">{error}</span>}
-        {step < 5 && (
-          <button className="next-btn" onClick={() => setStep(step + 1)} data-testid="next-step">次へ：{NEXT[step]} →</button>
-        )}
-      </div>
+      {/* 画面ごとの説明文と「次へ」は置かない（移動は左のメニュー）。エラーのときだけ帯を出す */}
+      {error && <div className="step-head"><span className="error inline">{error}</span></div>}
+      {step > 1 && st.inputs.analysis.missing.length > 0 && <AnalysisMismatch an={st.inputs.analysis} onOpen={() => setStep(1)} />}
+      {step === 3 && st.selection_stale && <StaleSelection onChanged={onInputsChanged} />}
       <main className="step-body">
         {step === 0 && <MasterStep key={`${st.masters.source}${st.masters.updated_at}`} st={st} onSaved={onMastersSaved} />}
-        {step === 1 && <AnalysisStep st={st} />}
-        {step === 2 && <WorkflowStep st={st} logicRun={logicRuns[batchId] ?? null} segments={segments} />}
+        {step === 1 && <AnalysisStep st={st} onChanged={onInputsChanged} batchId={batchId} onBatch={changeBatch} onGoStep={setStep} />}
+        {step === 2 && <WorkflowStep st={st} logicRun={logicRuns[batchId] ?? null} segments={segments} onChanged={onInputsChanged} />}
         {step === 3 && (
           <HardwareStep
             st={st} config={cfg} onConfig={setCfg}
-            check={hw?.check ?? null} profile={hw?.profile ?? null} source={hw?.source ?? null} run={run}
+            check={hw?.check ?? null} profile={hw?.profile ?? null} source={hw?.source ?? null}
             segments={segments} onSeek={() => setStep(1)}
+            saved={saved} onSaved={(c) => loadSaved(c.id)} batchId={batchId} onGoStep={setStep}
           />
         )}
-        {step === 4 && <ExecutionStep st={st} run={run} config={config} running={running} onRun={doRun} onPlaying={onPlaying} onGoStep={setStep} />}
+        {step === 4 && <ExecutionStep st={st} run={run} config={config} running={running} onRun={doRun} onPlaying={onPlaying} onGoStep={setStep}
+          saved={saved} execId={execId} onSelectExec={setExecId} execCheck={execCheck} batchId={batchId} />}
         {step === 5 && <EvaluationStep st={st} run={run} config={config} runs={sameBatchRuns} onGoStep={setStep} />}
       </main>
     </div>

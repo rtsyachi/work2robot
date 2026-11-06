@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import job from './__fixtures__/job_mixed.json'
 import type { JobTrace } from '../types'
-import { buildTimeline, elbow, sampleTimeline, solveArm } from './robotTimeline'
+import { STEP_L, buildTimeline, elbow, footAt, sampleTimeline, solveArm } from './robotTimeline'
 
 const trace = job as unknown as JobTrace
 
@@ -118,5 +118,66 @@ describe('elbow', () => {
     const e = elbow(sh, tg)
     expect(Math.hypot(e[1] - sh[1], e[2] - sh[2])).toBeCloseTo(0.75, 5)
     expect(Math.hypot(tg[1] - e[1], tg[2] - e[2])).toBeCloseTo(0.75, 5)
+  })
+})
+
+describe('二足歩行（ヒューマノイド）の時間軸', () => {
+  // 同じ実行トレースを、二足歩行の機体で再生したものとして組み立てる
+  const walkJob = {
+    ...(job as unknown as JobTrace),
+    robot: { config_id: 'hm_2', label: 'HM-2', base: 'legged_humanoid', arm: 'arm_dual_humanoid_hp', end_effector: 'humanoid_hands',
+      sensors: [], peripherals: [], payload_kg: 25, reach_m: 1.5, shoulder_height_m: 1.3, standoff_m: 0.35,
+      product: { execution: 'supported' } },
+  } as unknown as JobTrace
+  const tl = buildTimeline(walkJob)
+  const wrapA = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
+
+  it('体の向きは一瞬で反転しない（60fpsで1コマあたりの旋回が小さい）', () => {
+    expect(tl.mode).toBe('walk')
+    let prev = sampleTimeline(tl, 0).body!
+    let maxStep = 0
+    for (let f = 1; f <= tl.duration * 60; f++) {
+      const b = sampleTimeline(tl, f / 60).body!
+      maxStep = Math.max(maxStep, Math.abs(wrapA(b.yaw - prev.yaw)))
+      prev = b
+    }
+    expect(maxStep * 60 * 180 / Math.PI).toBeLessThan(260)   // 最大でも毎秒260度未満（以前は0.3秒ほどで180度回った）
+  })
+
+  it('着地している足は床を滑らない', () => {
+    let prev = sampleTimeline(tl, 0).body!
+    for (let f = 1; f <= tl.duration * 60; f++) {
+      const b = sampleTimeline(tl, f / 60).body!
+      const k = Math.floor(b.s / STEP_L + 1e-9)
+      if (k === Math.floor(prev.s / STEP_L + 1e-9)) {
+        const stance = (k % 2 === 0 ? 1 : 0) as 0 | 1
+        const a = footAt(tl, prev.s, stance).pos, c = footAt(tl, b.s, stance).pos
+        expect(Math.hypot(a[0] - c[0], a[2] - c[2])).toBeLessThan(1e-6)
+      }
+      prev = b
+    }
+  })
+
+  it('作業の順序と置き先は変えない', () => {
+    expect(tl.segments.map((s) => `${s.primitive.kind}:${s.primitive.object_id}`)).toEqual(walkJob.primitives.map((p) => `${p.kind}:${p.object_id}`))
+    const end = sampleTimeline(tl, tl.duration)
+    for (const p of walkJob.primitives.filter((q) => q.kind === 'place' && q.position)) {
+      const q = end.items[p.object_id].pos
+      expect(Math.hypot(q[0] - p.position![0], q[1] - p.position![1], q[2] - p.position![2])).toBeLessThan(1e-6)
+    }
+  })
+})
+
+describe('ヒューマノイドの腕（肘の向き）', () => {
+  it('人の腕と同じく、肘は肩と手首を結ぶ線より下に曲がる（産業用アームは上）', () => {
+    const S: [number, number, number] = [0, 1.3, 0.7], W: [number, number, number] = [0, 0.9, 0.3]
+    const lineY = (e: [number, number, number]) => {
+      const u = Math.hypot(e[0] - S[0], e[2] - S[2]) / Math.hypot(W[0] - S[0], W[2] - S[2])
+      return S[1] + (W[1] - S[1]) * u
+    }
+    const human = solveArm(S, W, 0.45, 0.45, true).elbow
+    const robot = solveArm(S, W, 0.45, 0.45).elbow
+    expect(human[1]).toBeLessThan(lineY(human))
+    expect(robot[1]).toBeGreaterThan(lineY(robot))
   })
 })

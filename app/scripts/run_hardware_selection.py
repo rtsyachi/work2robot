@@ -37,9 +37,10 @@ def main() -> int:
         print("v2の抽出結果がありません。先に scripts/run_extraction.py --v2 を実行してください")
         return 1
     hw = load("data/hardware_catalog.json")
-    m = masters.load_masters()  # Step 0 で登録したマスタ（なければ初期値）
-    objs = {o["object_id"]: o for o in masters.to_objects(m["items"])}
-    batch = [objs[i] for i in next(b for b in m["items"]["batches"] if b["batch_id"] == "video_batch")["object_ids"]]
+    m = masters.load_masters()  # Step 1 で登録したマスタ（なければ初期値）
+    cases = masters.cases_of(m)
+    objs = {o["object_id"]: o for o in cases["objects"]}
+    batch = [objs[i] for i in next(b for b in cases["batches"] if b["batch_id"] == "video_batch")["object_ids"]]
     ext["job"] = masters.apply_environment(ext["job"], m["environment"])
     reqs = compute_requirements(ext["job"], ext["workflow"], batch, hw)
     print(f"業務: {ext['record_file']}")
@@ -55,6 +56,9 @@ def main() -> int:
         except HardwareSelectionError as e:
             print(f"NG: {e} {e.detail}")
             return 1
+        # どの抽出結果（どの入力動画）から作ったかを記録する（画面が今の動画との対応を確かめる）
+        obs_in = ext.get("inputs", {}).get("observations") or ext.get("inputs", {}).get("explanation") or {}
+        sel["source"] = {"extraction": ext["record_file"], "video": obs_in.get("video")}
         print(f"保存: {save_selection(sel)}")
         print(f"モデル: {sel['meta']['model']}  試行回数: {sel['meta']['attempts']}  使用量: {sel['meta']['usage']}")
     c = sel["config"]

@@ -43,7 +43,7 @@ def test_products_fix_structure_and_limit_options(hw):
     c = resolve_product_config({"product_id": "hm_1"}, hw)
     assert (a["parts"]["base"], b["parts"]["base"], c["parts"]["base"]) == ("fixed_pedestal", "wheeled_base", "legged_humanoid")
     assert a["payload_kg"] > b["payload_kg"] > c["payload_kg"]
-    assert c["product"]["execution"] == "concept"
+    assert c["product"]["execution"] == "supported"   # ヒューマノイドも二足歩行で描く（概念プレビューはなし）
     with pytest.raises(HardwareError, match="固定"):
         resolve_product_config({"product_id": "aw_40f", "base": "legged_humanoid"}, hw)   # 固定式に脚は付けられない
     with pytest.raises(HardwareError, match="装着できない"):
@@ -54,13 +54,13 @@ def test_products_fix_structure_and_limit_options(hw):
         resolve_product_config({"product_id": "rm_10", "sensors": ["wrist_force_sensor"]}, hw)
 
 
-def test_humanoid_is_concept_preview_not_success(v2, hw):
-    """実行器が表現できない二足歩行・双腕の運搬は、成功に見せず未確認（概念プレビュー）の印を付ける。"""
+def test_light_humanoid_hands_off_heavy_and_far_items(v2, hw):
+    """HM-1（両腕で可搬10kg・リーチ0.8m）：重い箱と、カゴ車の奥・下段の荷物は人へ引き継ぐ。概念プレビューの印は付けない。"""
     t = run_job(v2["job"], v2["wf"], v2["batch"]["video_batch"], load(ROOT / "data" / "skill_catalog.json"),
                 robot=resolve_product_config({"product_id": "hm_1"}, hw))
-    assert t["robot"]["product"]["execution"] == "concept"
+    assert t["robot"]["product"]["execution"] == "supported"
     placed = [i for i in t["items"] if i["outcome"] == "placed"]
-    assert all(any("概念プレビュー" in u for u in i["capability"]["unverified"]) for i in placed)
+    assert not any("概念プレビュー" in u for i in placed for u in i["capability"]["unverified"])
     reasons = [i["handoff_reason"] for i in t["items"] if i["outcome"] == "handed_off"]
     assert any("可搬重量不足" in r for r in reasons)       # 両腕で可搬10kg：重い箱は持てない
     assert any("リーチ" in r for r in reasons)              # リーチ0.8m：カゴ車の奥・下段に届かない
@@ -70,11 +70,17 @@ def test_requirements_are_computed_from_job_and_master(v2, hw):
     reqs = {r["id"]: r for r in compute_requirements(v2["job"], v2["wf"], v2["batch"]["video_batch"], hw)}
     assert reqs["payload"]["value"] == 18.0 and "H1" in reqs["payload"]["basis"]
     assert reqs["object_size"]["value"] == 0.375          # 底面の短い辺（手先でつかむ幅）
-    assert {"kind": "rule", "id": "brick_pattern"} in reqs["rotate_90"]["links"]   # Step 2 の規則が由来
+    assert {"kind": "rule", "id": "brick_pattern"} in reqs["rotate_90"]["links"]   # Step 3 の規則が由来
     assert reqs["grasp_soft_bag"]["objects"] == ["S1", "S2"]
     assert reqs["reach"]["value"] == {"depth_m": 0.75, "height_m": 1.2}
-    for cid in ("grasp_box", "grasp_soft_bag", "rotate_90", "mobility", "sense_weight", "sense_material", "sense_id"):
+    for cid in ("grasp_box", "grasp_soft_bag", "rotate_90", "mobility", "sense_material", "sense_id"):
         assert cid in reqs, cid
+    # 重さは荷姿マスタにあるので、ロボット側の計測は要件にしない。マスタに重さがない荷物があるときだけ要件になる
+    assert "sense_weight" not in reqs
+    objs = [({**o, "attributes": {k: v for k, v in o["attributes"].items() if k != "weight_kg"}} if o["object_id"] == "L1" else o)
+            for o in v2["batch"]["video_batch"]]
+    reqs_nw = {r["id"]: r for r in compute_requirements(v2["job"], v2["wf"], objs, hw)}
+    assert reqs_nw["sense_weight"]["objects"] == ["L1"] and "L1" in reqs_nw["sense_weight"]["basis"]
     job = {**v2["job"], "rules": [r for r in v2["job"]["rules"] if r["type"] != "brick_pattern"]}
     assert "rotate_90" not in {r["id"] for r in compute_requirements(job, v2["wf"], v2["batch"]["video_batch"], hw)}
 
@@ -92,12 +98,10 @@ def test_spec_matching_ok_ng_unknown(v2, hw):
     assert good["payload"]["status"] == "ok"           # 20 − 1.6 = 18.4kg ≥ 18kg
     assert good["reach"]["status"] == "ok"
     assert good["grasp_soft_bag"]["status"] == "unknown"  # 未確認は未確認のまま
-    assert good["sense_weight"]["status"] == "partial"      # 力覚センサーは持ち上げた後にしか測れない
     light = {r["id"]: r for r in check_config(profile(v2, hw, "light_vacuum"), reqs, v2["job"]["cart"])["results"]}
     assert light["payload"]["status"] == "partial"           # 一部の荷物だけ持てない
     assert light["payload"]["affected"] == ["H1", "H2", "H3", "H4"]
     assert light["grasp_soft_bag"]["status"] == "ng" and light["grasp_soft_bag"]["affected"] == ["S1", "S2"]
-    assert light["sense_weight"]["status"] == "ng"
 
 
 def test_item_check(v2, hw):
@@ -143,3 +147,16 @@ def test_weak_config_does_not_lift_what_it_cannot(v2, hw):
 def test_without_robot_behaviour_is_unchanged(v2):
     t = run_job(v2["job"], v2["wf"], v2["batch"]["video_batch"], load(ROOT / "data" / "skill_catalog.json"))
     assert t["robot"] is None and t["end"]["placed"] == 17
+
+
+def test_step_floor_blocks_wheeled_but_not_legged(v2, hw):
+    """作業エリアに段差があると、車輪の台車は移動が対応不可、二足歩行は未確認、平坦なら車輪も対応可能。"""
+    job_step = {**v2["job"], "work_area": {"floor": "step"}}
+    reqs = compute_requirements(job_step, v2["wf"], v2["batch"]["video_batch"], hw)
+    mob = lambda pid: next(r for r in check_config(resolve_product_config({"product_id": pid}, hw), reqs, v2["job"]["cart"])["results"]  # noqa: E731
+                           if r["id"] == "mobility")
+    assert mob("rm_20")["status"] == "ng" and "段差" in mob("rm_20")["detail"]
+    assert mob("hm_2")["status"] == "unknown" and mob("aw_40f")["status"] == "ng"
+    flat = compute_requirements({**v2["job"], "work_area": {"floor": "flat"}}, v2["wf"], v2["batch"]["video_batch"], hw)
+    rm20 = next(r for r in check_config(resolve_product_config({"product_id": "rm_20"}, hw), flat, v2["job"]["cart"])["results"] if r["id"] == "mobility")
+    assert rm20["status"] == "ok"

@@ -9,14 +9,18 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from backend.ai.client import make_client  # noqa: E402
-from backend.ai.observation import latest_observation  # noqa: E402
 from backend.ai.task_structure import TaskStructureError, save_structure, structure_tasks  # noqa: E402
-from backend.ai.transcription import latest_transcript  # noqa: E402
 from backend.ai.observation import fmt_time  # noqa: E402
 
 
 def main() -> int:
-    tr, obs = latest_transcript(), latest_observation()
+    from backend import inputs
+    from backend.ai import observation, transcription
+    v = inputs.current_video()  # 今の作業動画の最新の文字起こし・観測
+    ht = inputs.latest_for("transcript", v, directory=transcription.RECORD_DIR)
+    ho = inputs.latest_for("observation", v, directory=observation.RECORD_DIR)
+    tr = {**ht[1], "record_file": ht[0].name} if ht else None
+    obs = {**ho[1], "record_file": ho[0].name} if ho else None
     if tr is None or obs is None or tr.get("video") != obs.get("video"):
         print("同じ動画の文字起こしと観測がありません（run_transcription.py・run_observation.py --v2 を先に実行）")
         return 1

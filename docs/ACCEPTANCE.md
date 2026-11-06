@@ -19,10 +19,10 @@
 | A11 | 公開GitHubに秘密情報・流用禁止データ・未許諾素材がない | `git status`、ファイル確認、起動手順確認、導入用実写素材の利用条件記録 |
 | A12 | 動画生成用の台本・人の配置・正解データがアプリの入力経路に入っていない。模擬素材であることが画面に表示される | 入力経路のコード確認、画面確認 |
 | A13 | 15〜20個の荷物を扱う一連の自然なカゴ車積付動画で、作業者の説明と映像上の行動が対応している | 入力動画（元動画・短縮版）を目視確認、観測テキストと文字起こしの時刻を照合 |
-| A14 | 業務から能力要件（数値はコードで計算）が出て、Claudeが**模擬の部品一覧の中から**構成を選定理由・候補外・未確認の点つきで仮選定する。仕様照合は決定的なコードで行い、未確認の能力は未確認のまま残る | `app/tests/test_hardware*.py`、`app/scripts/run_hardware_selection.py` の保存結果、画面の③ロボット構成 |
+| A14 | 業務から能力要件（数値はコードで計算）が出て、Claudeが**模擬の部品一覧の中から**構成を選定理由・候補外・未確認の点つきで仮選定する。仕様照合は決定的なコードで行い、未確認の能力は未確認のまま残る | `app/tests/test_hardware*.py`、`app/scripts/run_hardware_selection.py` の保存結果、画面の④ロボット構成 |
 | A15 | 選んだ構成が業務実行に反映される：能力が足りない荷物は持ち上げずに人へ引き継ぎ、届かない位置には置かない。構成を替えると結果が変わる | `app/tests/test_hardware.py`・`app/tests/test_api_v2.py`、画面で推薦構成と比較用の構成を実行 |
-| A17 | 荷物マスタ・環境マスタ（カゴ車・仮置き場）を最初に登録でき、決定的に検証される（エラーは保存しない）。登録した値が能力照合・業務実行に反映され、初期値に戻せる | `app/tests/test_masters.py`・`app/tests/test_api_v2.py`、画面の⓪マスタ登録 |
-| A16 | 改善余地は仮説として表示され、確認事項（曖昧な規則・不足情報・未確認の能力・実機PoC）と分けて示される。実証済みの表現がない | 画面の⑤導入前評価 |
+| A17 | 荷物マスタ・環境マスタ（カゴ車・仮置き場）を最初に登録でき、決定的に検証される（エラーは保存しない）。登録した値が能力照合・業務実行に反映され、初期値に戻せる。入力データがマスタ／トランザクション／その他に区分され、各データの登録する人・登録方法・使う機能が画面で分かる。解析結果が今の作業動画と違う動画から作られていれば警告する | `app/tests/test_masters.py`・`app/tests/test_inputs.py`・`app/tests/test_api_v2.py`、画面の①データ確認 |
+| A16 | 改善余地は仮説として表示され、確認事項（曖昧な規則・不足情報・未確認の能力・実機PoC）と分けて示される。実証済みの表現がない | 画面の⑥シミュレーション評価 |
 
 ## データ整合性の検証と実演は別
 
@@ -106,7 +106,7 @@
 
 ```text
 日時（JST）：2026-11-03〜04
-対象ID：A01、A02、A05〜A09、A13〜A16（シナリオv2：録音入りの入力動画→文字起こし→観測→抽出→ハードウェア仮選定→構成を反映した業務実行→導入前評価）
+対象ID：A01、A02、A05〜A09、A13〜A16（シナリオv2：録音入りの入力動画→文字起こし→観測→抽出→ハードウェア仮選定→構成を反映した業務実行→シミュレーション評価）
 状態：合格（通しの録画・3分動画（A10）は未実施）
 実行コマンドまたは操作：tools/demo_video（render:v2・mix:v2、ユーザーの録音を使用）、scripts\run_transcription.py（medium、7文とも正しい）、scripts\run_observation.py --v2（114枚・2回、観測64件）、scripts\run_extraction.py --v2（1回目で検証OK、評価一致）、scripts\run_hardware_selection.py（1回目で照合OK）、pytest（117件）、frontend の npm run test（12件）・npm run build・npm run screenshot:verify（16項目OK、ブラウザエラーなし）
 証拠：local_media/transcripts/transcript_20261103_222811.json、observations/observation_20261103_222944.json、extractions/extraction_20261103_223102.json、hardware_selections/hardware_20261104_203954.json、ui_check/20〜28。Claudeの構成（車輪型の台車＋中可搬アーム＋複合ハンド＋センサー）は可搬18.4kg≥18kg・リーチ1.3m≥約1.19mでok、袋の把持・押し込まない置き方・材質の判別は未確認。この構成で17個すべて配置（S1・S2は未確認の印）。比較用の軽い構成ではH1〜H4が可搬重量不足、S1・S2が手先非対応で、持ち上げずに人へ引継ぎ（6個）。改善余地は「実行結果から」「Claudeの仮説」と区別して仮説として表示
@@ -124,28 +124,28 @@
 
 ```text
 日時（JST）：2026-11-04
-対象ID：A02、A13（Step 1：動画の再生に合わせたタスク・判断理由の表示）
+対象ID：A02、A13（Step 2：動画の再生に合わせたタスク・判断理由の表示）
 状態：合格
 実行コマンドまたは操作：scripts\run_task_structure.py（1回目で検査OK、入力8,716／出力7,675トークン）、pytest（125件）、frontend の npm run test（16件）・npm run screenshot:verify（33項目OK）
-証拠：local_media/task_structures/tasks_20261104_224915.json、local_media/ui_check/30_step1_*.png。大タスク7件・小タスク29件。タイムラインの選択・再生・一時停止・シーク（戻る）でタスクが正しく切り替わる。発話S3の間はレンガ積みのルールを強調し、映像で向きを確認できないため「映像では判別できない」「基準は要確認」。対応する説明がない作業・判断できなかったことは「確認できなかったこと」に表示。Step 2で荷物を選ぶとStep 1の小タスクへ移動できる
+証拠：local_media/task_structures/tasks_20261104_224915.json、local_media/ui_check/30_step1_*.png。大タスク7件・小タスク29件。タイムラインの選択・再生・一時停止・シーク（戻る）でタスクが正しく切り替わる。発話S3の間はレンガ積みのルールを強調し、映像で向きを確認できないため「映像では判別できない」「基準は要確認」。対応する説明がない作業・判断できなかったことは「確認できなかったこと」に表示。Step 3で荷物を選ぶとStep 2の小タスクへ移動できる
 残る問題・次の修正：P1の粒度調整（小タスクの数）、録音を差し替えた場合はタスク構造も作り直す
 ```
 
 ```text
 日時（JST）：2026-11-05
-対象ID：A14、A15、A16（Step 3：仮想メーカー3社のカタログからの選定）
+対象ID：A14、A15、A16（Step 4：仮想メーカー3社のカタログからの選定）
 状態：合格
 実行コマンドまたは操作：scripts\run_hardware_selection.py（カタログ方式、1回目で照合OK、入力16,925／出力5,222トークン）、pytest（130件）、frontend の npm run build・npm run screenshot（53項目OK、API 8000・画面 5173 の共通サーバー）
-証拠：local_media/hardware_selections/hardware_20261105_212405.json、local_media/ui_check/33_step3*.png・36_step4_humanoid.png。3社の機種切替で構造・能力が変わる、固定構造（移動方式・アーム）は変更不可、RM-20に挟み込みグリッパーは選べない（理由を表示）、手先・センサーの変更で要求の状態が変わる、要求から機種を逆引き、Claudeはカタログの機種・オプションだけを選ぶ（RM-20＋複合ハンド、次点AW-40F＋コンベヤ）、RM-10は可搬重量不足でStep 4の結果とStep 5の評価が変わる、HM-1は概念プレビューと表示し成功に見せない
-残る問題・次の修正：Step 4の3Dで固定式・ヒューマノイドの外観を描き分ける（現在は台車のみ描画）、比較表示の強化（P1・P2）
+証拠：local_media/hardware_selections/hardware_20261105_212405.json、local_media/ui_check/33_step3*.png・36_step4_humanoid.png。3社の機種切替で構造・能力が変わる、固定構造（移動方式・アーム）は変更不可、RM-20に挟み込みグリッパーは選べない（理由を表示）、手先・センサーの変更で要求の状態が変わる、要求から機種を逆引き、Claudeはカタログの機種・オプションだけを選ぶ（RM-20＋複合ハンド、次点AW-40F＋コンベヤ）、RM-10は可搬重量不足でStep 5の結果とStep 6の評価が変わる、HM-1は概念プレビューと表示し成功に見せない
+残る問題・次の修正：Step 5の3Dで固定式・ヒューマノイドの外観を描き分ける（現在は台車のみ描画）、比較表示の強化（P1・P2）
 ```
 
 ```text
 日時（JST）：2026-11-05
-対象ID：Step 4（仮想ロボット実行の3D・画面構成）
+対象ID：Step 5（仮想実行の3D・画面構成）
 状態：合格
 実行コマンドまたは操作：frontend の npm run test（21件。把持してから持ち上げる・搬送中は荷物が手先と一体・置いてから解除・能力の確認では持ち上げない・届かない位置は腕を伸ばしきって止める）、npm run build、npm run screenshot（59項目OK）、npm run record:step4（推奨構成・AW-40F・HM-1）
-証拠：local_media/ui_check/step4_recommended.mp4・step4_aw_40f.mp4・step4_hm_1.mp4、34_step4_*.png・36_step4_*.png。Step 3 と同じ製品モデル（B社移動式は台車ごと走行、A社固定式はコンベヤから受け取る）が Pick（接近→把持→持ち上げ）→ Move（カゴ車の開口から差し入れ）→ Place（減速して下ろす→解除→退避）で17個を積む。HM-1は「17個中17個が処理対象外・主な原因」を先に出し、自動再生せず、歩行・双腕の動作は描かない
+証拠：local_media/ui_check/step4_recommended.mp4・step4_aw_40f.mp4・step4_hm_1.mp4、34_step4_*.png・36_step4_*.png。Step 4 と同じ製品モデル（A社移動式は台車ごと走行、C社固定式はコンベヤから受け取る）が Pick（接近→把持→持ち上げ）→ Move（カゴ車の開口から差し入れ）→ Place（減速して下ろす→解除→退避）で17個を積む。HM-1は「17個中17個が処理対象外・主な原因」を先に出し、自動再生せず、歩行・双腕の動作は描かない
 残る問題・次の修正：人間との比較は荷物IDでの対応（作業イベント単位の対応づけはP1）、重要場面の自動ズーム・速度調整（P1）、細部の質感（P2）
 ```
 
@@ -156,6 +156,49 @@
 実行コマンドまたは操作：pytest（148件。tests/test_masters.py：初期値の検証・未登録値の扱い・カゴ車と仮置き場の反映・エラー9種・注意・保存と初期値への戻し、tests/test_api_v2.py：登録→照合・実行への反映→初期値）、frontend の npm run test（24件。CSVの取り込み・書き出し）、npm run screenshot（65項目OK）
 証拠：local_media/ui_check/29_step0_items.png・29_step0_env.png。荷物18件・便2件・カゴ車・仮置き場を表とCSVで登録、エラー（重量が負）は保存ボタンが押せない、カゴ車の最大積載を100kgで登録すると④で「積載重量の上限（100kg）」の引継ぎが出る、初期値に戻せる
 残る問題・次の修正：作業エリア（通路幅・床面）は参照情報のみ（移動式ロボットの幅との照合は未対応）。カゴ車は1台のみ使用（複数登録・切替の画面は未実装）
+```
+
+```text
+日時（JST）：2026-11-06
+対象ID：A17（マスタ登録・画面の作り直し）
+状態：合格
+実行コマンドまたは操作：pytest（152件。受け付けるマスタの定義 MASTER_DEFS と初期値の一致、床面の選択肢・定義にない項目のエラーを追加）、frontend の npm run test（21件。CSVの取り込みを廃止しテストも削除）、npm run screenshot（77項目OK）
+証拠：local_media/ui_check/29_step0_overview.png・29_step0_items.png・29_step0_env.png・29_step0_issues.png。左にツリー（荷物マスタ18・便2・カゴ車1★・仮置き場・作業エリア・確認事項）、右に全体の概要（5つのマスタのカード）／一覧と1件の詳細（定義から作る入力欄、必須・未登録可・任意の表示）／配置図／確認事項（クリックで該当する行へ）。ファイルの取り込みはなし（一括登録はSEが外部で行う）
+残る問題・次の修正：SEが外部で一括登録する手順（JSONの置き場所以外の道具）は未整備
+```
+
+```text
+日時（JST）：2026-11-06
+対象ID：入力動画の差し替え（v2 → v5：materials/input_video_v5.mp4、3分17秒）
+状態：一部不一致あり
+実行コマンドまたは操作：run_transcription（ローカル、7発話）→ run_observation --v2（198枚・4分割、106件）→ run_extraction --v2 → run_task_structure（大タスク6）→ run_hardware_selection（RM-20）。課金は計 約$1.50（api_usage.py）。pytest 152件、npm run screenshot 77項目OK（説明中のルールの確認時刻を 38秒→74秒に変更）
+証拠：local_media/transcripts/transcript_20261106_112317.json・observations/observation_20261106_112556.json・extractions/extraction_20261106_112720.json・task_structures/tasks_20261106_112838.json・hardware_selections/hardware_20261106_112832.json、ui_check/30_step1_speaking.png
+残る問題・次の修正：抽出の評価で alt_batch の引継ぎが期待1・実際0（S2まで13個すべて配置。U1は期待どおり暫定動作）。評価データ（eval/expected_outcomes_v2.json）は変えていない。観測でW1を「W3」と読み違えた箇所、M5のタグが読めなかった箇所がある。仮選定の確認事項に、仮置き場の列の位置 z（奥行）を高さと取り違えた記述（「上段 z=1.45m」）がある
+```
+
+```text
+日時（JST）：2026-11-06
+対象ID：A17（入力データの3区分・データ確認の画面）
+状態：合格
+実行コマンドまたは操作：pytest 157件（tests/test_inputs.py：解析結果と作業動画の対応 ok／mismatch／unknown／missing、v2の抽出だけを使う、区分の定義）、npm run screenshot 全項目OK（データ確認の名前、ツリーの3区分、概要の3区分とカード、登録する人・方法、作業動画の情報、解析結果5種類と今の動画との対応、参照資料はMVPでは未対応）
+証拠：local_media/ui_check/29_step0_overview.png・29_step0_video.png・29_step0_analysis.png。便情報は app/data/transactions/shipments.json（登録値は local_media/transactions/）へ移した。仮選定の記録 hardware_20261106_112832.json には、実行時の出力（業務: extraction_20261106_112720.json）から元の動画を後で記録した（source.note に明記）。以降の仮選定はスクリプトが source を記録する
+残る問題・次の修正：その他（参照資料）は区分と運用の説明だけで、登録・閲覧は未実装（MVPの対象外）。構成の変更・仮想実行結果は保存しない
+```
+
+```text
+日時（JST）：2026-11-07
+対象ID：A17・ハードウェア仮選定・シミュレーション実行／評価・提出動画（2026-11-06〜07 の改訂のまとめ）
+状態：合格（実機での動作は未検証。値はすべて模擬）
+実行コマンドまたは操作：pytest 187件、frontend の npm run test 25件、tsc --noEmit エラー0、npm run screenshot 全項目OK（11-07 時点）。提出動画は npm run demo:capture → tools/demo_video/build_demo.py
+内容：
+- データ：荷物マスタ・便を、商品マスタ（食品卸の模擬13品。荷姿・ケース入数・ボール入数・取扱注意 TRUE/FALSE を含む）と出荷予定（出荷日・出荷ID・出荷先・商品・数量（ケース）。22行）・出荷実績に置き換え。荷物IDは出荷予定から組み立てる（M が6ケース → M1〜M6）。仮置き場・作業エリアは環境マスタに持ち画面に出さない。作業エリアの床面は段差あり（模擬）
+- ロボット構成：A社＝車輪移動式（RM-20・RM-10）、B社＝ヒューマノイド（HM-1・HM-2）、C社＝固定式（AW-40F。周辺機器のコンベヤは削除）。段差では車輪移動式の移動が対応不可、二足歩行は判断不可。重さの計測は商品マスタに重さがないときだけ要件。Claudeの仮選定は HM-2（local_media/hardware_selections/hardware_20261107_010634.json）
+- シミュレーション実行：シナリオ・ワークフロー・構成がそろい、対応不可が0件のときだけ実行できる（HM-1 はリーチ対応不可で実行不可のエラー）。HM-2 は17個すべて仮想配置。ヒューマノイドの3Dは決定的な歩行のタイムライン（足の接地・旋回、肘は下に曲げる）
+- シミュレーション評価：シミュレーションサマリ（主要所見・効果見通し・残存課題）→ KPI → 定量評価（工程ごと）・課題・改善余地（評価観点ごと）
+- ワークフロー確認：業務の要約（折りたたみ）、工程ごとの「確認・修正」、判断条件の修正・削除、確認事項の消込（scenario.json の resolved_confirmations）
+- 提出動画：materials/demo/demo_no_voiceover.mp4（177.03秒・1920×1080・30fps・H.264/AAC。作業者の音声のみ、発表ナレーションは未収録）。台本は docs/DEMO.md、品質確認は materials/demo/qa_report.md
+証拠：local_media/demo_build/shots/*.png（実画面）、local_media/ui_check/hm2_turn_after.mp4・hm2_elbow_after.mp4、materials/demo/scene_manifest.json
+残る問題・次の修正：発表ナレーションの収録と合成（tools/demo_video/mix_voiceover.py）。HM-2 の全編動画（step4_recommended.mp4）は撮り直していない。使わなくなった app/data/masters/item_master.json・transactions/shipments.json は削除していない。上の過去の記録（AW-40F の推奨・RM-10 の部分実行など）はその日時点の記録として残す
 ```
 
 **禁止：** 固定動画での作業を、実際の分岐エンジンによる動的な実行と誤認させない。成功率・稼働時間・安全性の値を作らない。

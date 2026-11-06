@@ -1,6 +1,7 @@
 // 仮想メーカーのロボット製品の3Dレンダー（カタログのヒーロー画像・サムネイル用）。
 // 実在の機種の形状を写したものではなく、機体タイプと装備しているオプションが分かる独自デザインの簡易モデル。
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { THEME } from '../lib/theme'
 import { Canvas } from '@react-three/fiber'
 import { ContactShadows, Html, OrbitControls, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
@@ -15,18 +16,34 @@ const UP = new THREE.Vector3(0, 1, 0)
 const HL = createContext(false)
 export function Paint({ color, metal = 0.25, rough = 0.45 }: { color: string; metal?: number; rough?: number }) {
   const on = useContext(HL)
-  return <meshStandardMaterial color={color} metalness={metal} roughness={rough} emissive={on ? '#4c6ef5' : '#000000'} emissiveIntensity={on ? 0.08 : 0} />
+  return <meshStandardMaterial color={color} metalness={metal} roughness={rough} emissive={on ? THEME.teal : '#000000'} emissiveIntensity={on ? 0.08 : 0} />
 }
+/** モデル上の吹き出し：変更できる部位（●・押すと候補を出す）と、機種に固定の部位（🔒・押せない） */
+export type Hotspots = { changeable: PartKind[]; locked: PartKind[]; active: PartKind | null }
+const HOT = createContext<(Hotspots & { onPick?: (k: PartKind) => void }) | null>(null)
+
 type PartProps = { kind: PartKind; children: ReactNode; hl: PartKind[]; onPick?: (k: PartKind) => void; label?: V }
 function Part({ kind, children, hl, onPick, label }: PartProps) {
   const on = hl.includes(kind)
+  const hot = useContext(HOT)
+  const canPick = onPick && (!hot || hot.changeable.includes(kind))  // 変更できない部位は押せるように見せない
   return (
     <HL.Provider value={on}>
-      <group onClick={onPick ? (e) => { e.stopPropagation(); onPick(kind) } : undefined}
-        onPointerOver={onPick ? () => { document.body.style.cursor = 'pointer' } : undefined}
-        onPointerOut={onPick ? () => { document.body.style.cursor = '' } : undefined}>
+      <group onClick={canPick ? (e) => { e.stopPropagation(); onPick!(kind) } : undefined}
+        onPointerOver={canPick ? () => { document.body.style.cursor = 'pointer' } : undefined}
+        onPointerOut={canPick ? () => { document.body.style.cursor = '' } : undefined}>
         {children}
-        {on && label && (
+        {hot && label && hot.changeable.includes(kind) && (
+          <Html position={label} center zIndexRange={[20, 0]}>
+            <button className={`hotspot ${hot.active === kind ? 'is-on' : ''}`} onClick={() => onPick?.(kind)} data-testid={`hot-${kind}`}>● {SHORT[kind]}</button>
+          </Html>
+        )}
+        {hot && label && hot.locked.includes(kind) && (
+          <Html position={label} center zIndexRange={[20, 0]}>
+            <span className="hotspot is-locked" title="この機種に固定（変更できない）" data-testid={`lock-${kind}`}>🔒 {SHORT[kind]}</span>
+          </Html>
+        )}
+        {!hot && on && label && (
           <Html position={label} center zIndexRange={[20, 0]}>
             <div className="render-tag">{SHORT[kind]}</div>
           </Html>
@@ -160,7 +177,7 @@ function Carton({ p, s = [0.4, 0.28, 0.32] as V }: { p: V; s?: V }) {
 
 export type Kit = { parts: ConfigParts; hl: PartKind[]; onPick?: (k: PartKind) => void }
 
-// ---- A社：固定式ステーションアーム（オレンジ・グラファイト、設備感） ----
+// ---- C社：固定式ステーションアーム（オレンジ・グラファイト、設備感） ----
 function FixedArm({ parts, hl, onPick }: Kit) {
   const OR = '#e8661c', GR = '#2b2f33', ST = '#8a9096'
   const W: V = [1.12, 1.36, 0]
@@ -213,7 +230,7 @@ function FixedArm({ parts, hl, onPick }: Kit) {
   )
 }
 
-// ---- B社：車輪移動式マニピュレータ（白・黒・ティール） ----
+// ---- A社：車輪移動式マニピュレータ（白・黒・ティール） ----
 function MobileArm({ parts, hl, onPick, light }: Kit & { light: boolean }) {
   const WH = '#eef0f2', BK = '#1f2328', AC = '#12b886'
   const k = light ? 0.82 : 1
@@ -258,7 +275,7 @@ function MobileArm({ parts, hl, onPick, light }: Kit & { light: boolean }) {
   )
 }
 
-// ---- C社：ヒューマノイド（メタリックグレー・ダーク） ----
+// ---- B社：ヒューマノイド（メタリックグレー・ダーク） ----
 export function Humanoid({ parts, hl, onPick }: Kit) {
   const MG = '#a3a9b0', DK = '#24272b', AC = '#4dabf7'
   const legs = [-1, 1].map((s) => ({ hip: [s * 0.11, 0.9, 0] as V, knee: [s * 0.12, 0.5, 0.03] as V, ankle: [s * 0.12, 0.1, 0] as V }))
@@ -318,11 +335,15 @@ type Props = {
   onPick?: (k: PartKind) => void
   thumb?: boolean
   armId?: string
+  hotspots?: Hotspots   // 指定するとモデル上に吹き出しを出す（変更できる部位だけ押せる）
 }
 
 /** 製品のレンダー。thumb はサムネイル（操作なし・静止）。 */
-export default function ProductRender({ parts, highlight = [], onPick, thumb = false }: Props) {
-  const view = VIEW[parts.base] ?? VIEW.wheeled_base
+export default function ProductRender({ parts, highlight = [], onPick, thumb = false, hotspots }: Props) {
+  const v0 = VIEW[parts.base] ?? VIEW.wheeled_base
+  // 大きな表示は少し引きにして、機体の全体（足元・頭・手先）が入るようにする。サムネイルは今のまま
+  const ZOOM_OUT = thumb ? 1 : 1.35
+  const view = { target: v0.target, cam: v0.cam.map((c, i) => v0.target[i] + (c - v0.target[i]) * ZOOM_OUT) as V }
   const kit = { parts, hl: highlight, onPick }
   return (
     <Canvas
@@ -338,9 +359,11 @@ export default function ProductRender({ parts, highlight = [], onPick, thumb = f
         <meshStandardMaterial color="#e9ecef" roughness={0.95} />
       </mesh>
       <ContactShadows position={[0, 0.002, 0]} opacity={0.45} scale={6} blur={2.2} far={2.5} frames={1} />
-      {parts.base === 'fixed_pedestal' && <FixedArm {...kit} />}
-      {parts.base === 'wheeled_base' && <MobileArm {...kit} light={parts.arm === 'arm_light'} />}
-      {parts.base === 'legged_humanoid' && <Humanoid {...kit} />}
+      <HOT.Provider value={hotspots && !thumb ? { ...hotspots, onPick } : null}>
+        {parts.base === 'fixed_pedestal' && <FixedArm {...kit} />}
+        {parts.base === 'wheeled_base' && <MobileArm {...kit} light={parts.arm === 'arm_light'} />}
+        {parts.base === 'legged_humanoid' && <Humanoid {...kit} />}
+      </HOT.Provider>
       {!thumb && <OrbitControls target={view.target} enablePan={false} enableZoom={false} minPolarAngle={0.6} maxPolarAngle={1.45} />}
     </Canvas>
   )

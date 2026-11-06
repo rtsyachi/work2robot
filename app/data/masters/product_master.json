@@ -1,0 +1,214 @@
+{
+  "master": "products",
+  "note": "商品マスタ（マスタ、模擬）。食品卸を想定した架空の商品。荷姿・材質・ケース入数・ボール入数と、出荷単位（1ケース）の重量・寸法を持つ。実在の商品データではない。",
+  "products": [
+    {
+      "product_id": "H1",
+      "name": "ミネラルウォーター 2L",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 9,
+      "ball_qty": null,
+      "weight_kg": 18.0,
+      "dims_m": [
+        0.5,
+        0.375,
+        0.3
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "H2",
+      "name": "トマト缶 400g",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 36,
+      "ball_qty": 12,
+      "weight_kg": 16.0,
+      "dims_m": [
+        0.5,
+        0.375,
+        0.3
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "H3",
+      "name": "濃口醤油 1L",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 12,
+      "ball_qty": 6,
+      "weight_kg": 15.0,
+      "dims_m": [
+        0.5,
+        0.375,
+        0.3
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "H4",
+      "name": "キャノーラ油 1000g",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 12,
+      "ball_qty": 6,
+      "weight_kg": 13.0,
+      "dims_m": [
+        0.5,
+        0.375,
+        0.3
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "M",
+      "name": "スパゲッティ 500g",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 16,
+      "ball_qty": 8,
+      "weight_kg": 8.0,
+      "dims_m": [
+        0.5,
+        0.25,
+        0.2
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "W1",
+      "name": "野菜ジュース 200ml",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 30,
+      "ball_qty": 10,
+      "weight_kg": 7.0,
+      "dims_m": [
+        0.4,
+        0.375,
+        0.25
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "W2",
+      "name": "緑茶 500ml",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 12,
+      "ball_qty": 6,
+      "weight_kg": 6.5,
+      "dims_m": [
+        0.4,
+        0.375,
+        0.25
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "L1",
+      "name": "おせんべい 詰合せ",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 10,
+      "ball_qty": 5,
+      "weight_kg": 1.5,
+      "dims_m": [
+        0.3,
+        0.25,
+        0.2
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "L2",
+      "name": "ポテトチップス 85g",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 12,
+      "ball_qty": 6,
+      "weight_kg": 1.2,
+      "dims_m": [
+        0.3,
+        0.25,
+        0.2
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "L3",
+      "name": "カップスープ 3食入",
+      "packing_type": "段ボールケース",
+      "material_class": "rigid",
+      "case_qty": 10,
+      "ball_qty": 5,
+      "weight_kg": 1.0,
+      "dims_m": [
+        0.3,
+        0.25,
+        0.2
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "S1",
+      "name": "精米 2kg",
+      "packing_type": "米袋（柔らかい）",
+      "material_class": "soft",
+      "case_qty": 1,
+      "ball_qty": null,
+      "weight_kg": 2.0,
+      "dims_m": [
+        0.4,
+        0.3,
+        0.2
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "S2",
+      "name": "強力粉 1.8kg",
+      "packing_type": "紙袋（柔らかい）",
+      "material_class": "soft",
+      "case_qty": 1,
+      "ball_qty": null,
+      "weight_kg": 1.8,
+      "dims_m": [
+        0.4,
+        0.3,
+        0.2
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    },
+    {
+      "product_id": "U1",
+      "name": "贈答用 詰合せセット",
+      "packing_type": "化粧箱（材質未確認）",
+      "material_class": null,
+      "case_qty": 6,
+      "ball_qty": null,
+      "weight_kg": 2.5,
+      "dims_m": [
+        0.3,
+        0.25,
+        0.2
+      ],
+      "fragile_content": false,
+      "handling_note": ""
+    }
+  ]
+}

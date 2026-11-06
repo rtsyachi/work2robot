@@ -46,6 +46,7 @@ SYSTEM_PROMPT = """あなたは物流現場の作業分析の専門家です。�
 
 ## 動作ノード（skill）
 - スキル一覧にある skill_name と、その定義にある parameters の値だけを使う。暫定動作でない skill は provisional を false にする。
+- label は動作（行為）だけを書く（例：「最上段に押し込まずに置く」「規則に従って置く」「慎重に置く（暫定）」）。どの荷物の場合か（柔らかい・重い・材質や重さが不明など）は手前の判断ノードの分岐で表し、label に入れない。
 
 ## 根拠（source_evidence）
 - type は、説明テキストならその source_type、観測テキストならその source_type、属性定義なら mock_metadata、あなたの推測なら ai_hypothesis。
@@ -131,6 +132,140 @@ def job_schema_v2() -> dict:
         "required": ["rules", "unsupported_rules", "end_condition", "end_note"],
         "additionalProperties": False,
     }
+
+
+STAGE_ROLES = ["item_loop", "final_check", "other"]
+BASIS = ["video_observation", "spoken_instruction", "ai_hypothesis"]
+
+
+def process_schema() -> dict:
+    """工程の構造（Level 1 の工程と、工程ごとの詳細＝Level 2）の出力形式（ai/process_structure.py の呼び出しで使う）。
+    表示・確認用で、item_loop 以外は実行しない。根拠は refs（観測・説明のセグメントID）と basis（根拠の種類）で表す。
+    ノードは**タスク（何をするか）だけ**。判断条件はタスクの中の criteria（基準名・使い方・参照する業務の規則）に入れ、
+    条件による分岐は edges の label（「○○のとき」）で表す。判断そのものをノードにしない。
+    confirmation_refs は確認事項のID（ワークフロー生成で作ったもの、またはこの呼び出しで加える new_confirmation_items のID）。"""
+    from backend.workflow.job_rules import SUPPORTED_RULES
+
+    s = {"type": "string"}
+    ids = {"type": "array", "items": s}
+    basis = {"type": "string", "enum": BASIS}
+    criterion = {
+        "type": "object",
+        "properties": {"name": s, "how": s, "rule_refs": {"type": "array", "items": {"type": "string", "enum": list(SUPPORTED_RULES)}},
+                       "basis": basis, "refs": ids},
+        "required": ["name", "how", "rule_refs", "basis", "refs"],
+        "additionalProperties": False,
+    }
+    node = {
+        "type": "object",
+        "properties": {"id": s, "label": s, "detail": s, "criteria": {"type": "array", "items": criterion},
+                       "confirmation_refs": ids, "basis": basis, "refs": ids},
+        "required": ["id", "label", "detail", "criteria", "confirmation_refs", "basis", "refs"],
+        "additionalProperties": False,
+    }
+    edge = {"type": "object", "properties": {"source": s, "target": s, "label": s},
+            "required": ["source", "target", "label"], "additionalProperties": False}
+    stage = {
+        "type": "object",
+        "properties": {"id": s, "name": s, "purpose": s, "role": {"type": "string", "enum": STAGE_ROLES}, "basis": basis, "refs": ids,
+                       "nodes": {"type": "array", "items": node}, "edges": {"type": "array", "items": edge}},
+        "required": ["id", "name", "purpose", "role", "basis", "refs", "nodes", "edges"],
+        "additionalProperties": False,
+    }
+    item = {"type": "object",
+            "properties": {"id": s, "kind": {"type": "string", "enum": CONFIRMATION_KINDS}, "topic": s, "detail": s},
+            "required": ["id", "kind", "topic", "detail"], "additionalProperties": False}
+    return {"type": "object",
+            "properties": {"stages": {"type": "array", "items": stage}, "new_confirmation_items": {"type": "array", "items": item}},
+            "required": ["stages", "new_confirmation_items"], "additionalProperties": False}
+
+
+def _basis_evidence(basis: str, refs: list[str]) -> list[dict]:
+    return [{"type": basis, "ref": r} for r in refs if r] or [{"type": basis}]
+
+
+def to_process(raw: dict) -> dict:
+    """工程の構造を表示用に整える（根拠は source_evidence の形にする）。ノードはすべてタスク。
+    rule_refs（タスクで使う規則の和集合）と conditions（判断条件を1行ずつ）は、判断条件（criteria）から作る。"""
+    stages = []
+    for st in raw.get("stages", []):
+        nodes = []
+        for n in st["nodes"]:
+            crit = [{**{k: v for k, v in c.items() if k != "refs"}, "source_evidence": _basis_evidence(c["basis"], c["refs"])}
+                    for c in n.get("criteria", [])]
+            nodes.append({**{k: v for k, v in n.items() if k not in ("refs", "criteria")}, "type": "task", "criteria": crit,
+                          "rule_refs": list(dict.fromkeys(t for c in crit for t in c["rule_refs"])),
+                          "conditions": [f"{c['name']}：{c['how']}" for c in crit],
+                          "source_evidence": _basis_evidence(n["basis"], n["refs"])})
+        stages.append({**{k: v for k, v in st.items() if k != "refs"},
+                       "source_evidence": _basis_evidence(st["basis"], st["refs"]), "nodes": nodes})
+    return {"stages": stages}
+
+
+# タスク名に入れない判断の基準（荷物の性質・状態）。これらは criteria に入れる
+CRITERIA_WORDS = ("重い", "軽い", "柔らか", "硬い", "壊れ", "大きい", "小さい", "不明", "の場合", "ならば")
+
+
+def task_label_problem(label: str) -> str | None:
+    """タスク名が業務上の行為になっていない理由（判断をノードにしている・基準が混ざっている）。問題なければ None。"""
+    text = label.strip()
+    if text.endswith(("か", "か？", "?", "？")):
+        return "は判断（〜か）になっている"
+    hit = next((w for w in CRITERIA_WORDS if w in text), None)
+    return f"に判断の基準（{hit}）が入っている" if hit else None
+
+
+def process_errors(process: dict, job: dict, confirmation_ids: set[str] | None = None) -> tuple[list[dict], list[dict]]:
+    """工程の構造の検査（エラー＝作り直させる、注意＝表示する）。"""
+    errors: list[dict] = []
+    warnings: list[dict] = []
+    stages = process.get("stages", [])
+    if not stages:
+        errors.append({"code": "process_empty", "node_id": "process", "message": "工程（stages）がない"})
+    ids = [s["id"] for s in stages]
+    if len(ids) != len(set(ids)):
+        errors.append({"code": "process_duplicate", "node_id": "process", "message": "工程の id が重複している"})
+    loops = [s for s in stages if s["role"] == "item_loop"]
+    if len(loops) != 1:
+        errors.append({"code": "process_item_loop", "node_id": "process",
+                       "message": f"荷物を積む繰り返しの工程（role=item_loop）はちょうど1つにする（今は{len(loops)}個）"})
+    from backend.workflow.job_rules import SUPPORTED_RULES
+
+    selected = {r["type"] for r in job.get("rules", [])}
+    for s in stages:
+        where = s["id"]
+        if s["role"] not in STAGE_ROLES:
+            errors.append({"code": "process_role", "node_id": where, "message": f"role は {STAGE_ROLES} のどれか（今は {s['role']!r}）"})
+        for item in [s, *s["nodes"]]:
+            if item["basis"] not in BASIS:
+                errors.append({"code": "process_basis", "node_id": where, "message": f"basis は {BASIS} のどれか（今は {item['basis']!r}）"})
+        for n in s["nodes"]:
+            bad = task_label_problem(n["label"])
+            if bad:
+                errors.append({"code": "process_task_label", "node_id": f"{where}.{n['id']}",
+                               "message": f"タスク名「{n['label']}」{bad}。タスク名は業務上の行為（例：次に積む荷物を決定する）にし、判断の基準は criteria に入れる"})
+            for t in n["rule_refs"]:
+                if t not in SUPPORTED_RULES:
+                    errors.append({"code": "process_rule", "node_id": f"{where}.{n['id']}",
+                                   "message": f"rule_refs の {t!r} は規則の一覧にない（一覧で表せない条件は criteria の how に書く）"})
+        nids = [n["id"] for n in s["nodes"]]
+        if len(nids) != len(set(nids)):
+            errors.append({"code": "process_duplicate", "node_id": s["id"], "message": f"工程 {s['id']} のノード id が重複している"})
+        for e in s["edges"]:
+            if e["source"] not in nids or e["target"] not in nids:
+                errors.append({"code": "process_edge", "node_id": s["id"],
+                               "message": f"工程 {s['id']} の辺 {e['source']}→{e['target']} が存在しないノードを指している"})
+        for n in s["nodes"]:
+            for t in n["rule_refs"]:
+                if t in SUPPORTED_RULES and t not in selected:
+                    warnings.append({"code": "rule_not_selected", "node_id": f"{s['id']}.{n['id']}",
+                                     "message": f"規則 {t} は業務の規則に選ばれていない（実行では使われない）"})
+            if confirmation_ids is not None:
+                for c in n.get("confirmation_refs", []):
+                    if c not in confirmation_ids:
+                        errors.append({"code": "process_confirmation", "node_id": f"{where}.{n['id']}",
+                                       "message": f"confirmation_refs の {c!r} はどの確認事項のIDでもない"})
+    return errors, warnings
 
 
 def output_schema(catalog: dict, scenario: str = "v1") -> dict:
@@ -327,13 +462,17 @@ def job_errors_v2(job: dict) -> list[dict]:
 
 def load_inputs_v2() -> dict:
     """シナリオv2の抽出への入力：動画の音声の文字起こし・動画の観測テキスト・属性定義（カゴ車の仕様を含む）。"""
-    from .observation import latest_observation
-    from .transcription import latest_transcript
+    from backend import inputs as inputs_mod
+    from . import observation, transcription
 
-    tr = latest_transcript()
+    # 今の作業動画（Step 2 でアップロードした動画、なければ v5デモ）の最新の文字起こし・観測を使う
+    video = inputs_mod.current_video()
+    hit_t = inputs_mod.latest_for("transcript", video, directory=transcription.RECORD_DIR)
+    hit_o = inputs_mod.latest_for("observation", video, directory=observation.RECORD_DIR)
+    tr = {**hit_t[1], "record_file": hit_t[0].name} if hit_t else None
+    obs = {**hit_o[1], "record_file": hit_o[0].name} if hit_o else None
     if tr is None:
         raise ExtractionError("説明の文字起こしがありません。先に scripts/run_transcription.py を実行してください")
-    obs = latest_observation()
     if obs is None or obs.get("video") != tr.get("video"):
         raise ExtractionError("文字起こしと同じ動画の観測テキストがありません。先に動画の観測を実行してください")
     keep = ("source_type", "note", "voice_note", "video", "segments", "uncertain", "created_at", "record_file")
@@ -378,6 +517,9 @@ def build_user_content(inputs: dict, catalog: dict) -> str:
          else "説明テキスト", inputs["explanation"]),
         ("観測テキスト", inputs["observations"]),
     ]
+    if inputs.get("supplement"):  # Step 2 で利用者が入力した補足（入力がないときは従来と同じ入力）
+        sections.append(("利用者の補足（未検証。動画・発話の根拠ではない。これだけを根拠にした条件は確認事項に入れる）",
+                         inputs["supplement"]))
     body = "\n\n".join(f"## {title}\n```json\n{json.dumps(data, ensure_ascii=False, indent=2)}\n```"
                        for title, data in sections)
     return f"次の入力から、荷物1個を処理する分岐付きワークフローと確認事項を作ってください。\n\n{body}"
@@ -398,9 +540,10 @@ class ExtractionResult:
     validation: dict
     meta: dict
     raw_outputs: list[str]
+    process: dict | None = None  # 工程の構造（v2。ai/process_structure.py の別の呼び出しで作って加える）
 
     def to_dict(self) -> dict:
-        return {
+        out = {
             "workflow": self.workflow,
             "job": self.job,
             "confirmation_items": self.confirmation_items,
@@ -408,6 +551,9 @@ class ExtractionResult:
             "validation": self.validation,
             "meta": self.meta,
         }
+        if self.process is not None:
+            out["process"] = self.process
+        return out
 
 
 def _repair_message(errors: list[dict]) -> str:
@@ -415,11 +561,33 @@ def _repair_message(errors: list[dict]) -> str:
     return f"出力したワークフローは検証エラーになりました。次の点を直して、全体を出力し直してください。\n{lines}"
 
 
+REVISION_GUIDE = """## 修正の依頼（Step 3：利用者の確認・教示）
+上の入力から作った「現在のワークフロー」を、利用者の修正指示に従って直し、全体を同じ形式で出力し直してください。
+- 指示に関係しない部分（ノードのid・label・条件・根拠、規則、確認事項）は変えない。
+- 工程の構造（工程・タスクの並び）への指示はこのあと別に反映するので、ここでは規則・判断条件・確認事項に関係する部分だけを直す。
+- 指示を根拠にする条件・規則・閾値は、source_evidence に type=human_confirmed（note に指示の要点、ref は空文字列）を入れる。人の確認がある数値の閾値は definition_status=defined にしてよい。
+- 指示で解決した確認事項は confirmation_items から外す。指示が曖昧で決められない点は確認事項に残す。
+- 指示が実行器の規則の一覧や属性定義で表せない場合は、無理に当てはめず unsupported_rules か確認事項にする。
+- summary は修正後の内容で書き直す。"""
+
+
+def build_revision_content(current: dict, instruction: str, focus: str = "") -> str:
+    """修正依頼の追記：現在のワークフロー（利用者が確認中の版）と、利用者の指示。"""
+    body = (f"{REVISION_GUIDE}\n\n## 現在のワークフロー\n```json\n{json.dumps(current, ensure_ascii=False, indent=1)}\n```\n\n"
+            f"## 利用者の修正指示\n{instruction.strip()}")
+    if focus:
+        body += f"\n\n（利用者が画面で選んでいた箇所：{focus}）"
+    return body
+
+
 def extract_workflow(client: Any, inputs: dict, catalog: dict, *,
-                     effort: str = "high", max_attempts: int = 2, scenario: str = "v1") -> ExtractionResult:
-    """Claudeでワークフロー案を作り、検証器に通る形で返す。scenario="v2" なら業務の規則の一覧から選ばせる。"""
+                     effort: str = "high", max_attempts: int = 2, scenario: str = "v1",
+                     revision: str | None = None) -> ExtractionResult:
+    """Claudeでワークフロー案を作り、検証器に通る形で返す。scenario="v2" なら業務の規則の一覧から選ばせる。
+    revision を渡すと（build_revision_content の文）、現在のワークフローを利用者の指示で直した全体を作る。"""
     schema = output_schema(catalog, scenario)
-    messages: list[dict] = [{"role": "user", "content": build_user_content(inputs, catalog)}]
+    content = build_user_content(inputs, catalog) + (f"\n\n{revision}" if revision else "")
+    messages: list[dict] = [{"role": "user", "content": content}]
     usage, raw_outputs, fallback_used = [], [], False
     last_errors: list[dict] = []
 
@@ -457,6 +625,11 @@ def extract_workflow(client: Any, inputs: dict, catalog: dict, *,
             job_errs = job_errors_v2(job)
             validation["errors"] = validation["errors"] + job_errs
             validation["ok"] = validation["ok"] and not job_errs
+            # 動作名に判断の基準が混ざっていないか（注意として表示。分岐は判断ノードで表す）
+            for n in workflow["nodes"]:
+                bad = task_label_problem(n.get("label", "")) if n["type"] == "skill" else None
+                if bad:
+                    validation["warnings"].append({"code": "skill_label_mixed", "node_id": n["id"], "message": f"動作名「{n['label']}」{bad}"})
         meta = {
             "model": msg.model,
             "requested_model": MODEL,

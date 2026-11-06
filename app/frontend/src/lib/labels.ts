@@ -22,7 +22,7 @@ export const EVIDENCE_LABEL: Record<string, string> = {
   video_observation: '動画で観測',
   spoken_instruction: '発話（音声認識）',
   provided_text: '提供された説明テキスト',
-  mock_metadata: '模擬荷物マスタ',
+  mock_metadata: '模擬の商品・荷姿マスタ',
   ai_hypothesis: 'AIの推測',
   human_confirmed: '人が確認',
   unknown: '不明',

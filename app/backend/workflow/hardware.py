@@ -110,7 +110,7 @@ def reach_needed(profile: dict, cart: dict, x_center: float, z_center: float, y_
 
 
 def compute_requirements(job: dict, workflow: dict, objects: list[dict], hw_catalog: dict) -> list[dict]:
-    """業務定義・ワークフロー・模擬荷物マスタから、能力要件を決定的に計算する（source=computed）。"""
+    """業務定義・ワークフロー・模擬の商品・荷姿マスタから、能力要件を決定的に計算する（source=computed）。"""
     caps = hw_catalog["capabilities"]
     rules = {r["type"] for r in job.get("rules", [])}
     cart = job["cart"]
@@ -119,7 +119,7 @@ def compute_requirements(job: dict, workflow: dict, objects: list[dict], hw_cata
         return o.get("attributes", {}).get(k, {}).get("value")
 
     reqs: list[dict] = []
-    # links：この要求の由来（Step 2 の業務の規則・ワークフローのノード・荷物）
+    # links：この要求の由来（Step 3 の業務の規則・ワークフローのノード・荷物）
     rule_link = lambda *ts: [{"kind": "rule", "id": t} for t in ts if t in rules]  # noqa: E731
     node_link = lambda pred: [{"kind": "node", "id": n["id"]} for n in workflow["nodes"] if pred(n)]  # noqa: E731
     weights = {o["object_id"]: attr(o, "weight_kg") for o in objects if isinstance(attr(o, "weight_kg"), (int, float))}
@@ -127,14 +127,14 @@ def compute_requirements(job: dict, workflow: dict, objects: list[dict], hw_cata
         oid = max(weights, key=weights.get)
         unknown = [o["object_id"] for o in objects if o["object_id"] not in weights]
         reqs.append({"id": "payload", "label": "重い箱を持てる（可搬重量）", "kind": "numeric", "value": weights[oid], "unit": "kg",
-                     "basis": f"最も重い荷物 {oid}（模擬荷物マスタ）" + (f"。重さ不明：{', '.join(unknown)}" if unknown else ""),
+                     "basis": f"最も重い荷物 {oid}（模擬の商品・荷姿マスタ）" + (f"。重さ不明：{', '.join(unknown)}" if unknown else ""),
                      "per_object": weights, "links": [{"kind": "object", "id": oid}]})
     # 手先で挟む・吸う幅は、荷物の底面の短い辺（item_check と同じ基準）
     widths = {o["object_id"]: min(attr(o, "dims_m")[:2]) for o in objects if isinstance(attr(o, "dims_m"), list)}
     if widths:
         oid = max(widths, key=widths.get)
         reqs.append({"id": "object_size", "label": "荷物の大きさに手先が合う（つかむ幅）", "kind": "numeric",
-                     "value": widths[oid], "unit": "m", "basis": f"底面の短い辺が最も長い荷物 {oid}（模擬荷物マスタ）",
+                     "value": widths[oid], "unit": "m", "basis": f"底面の短い辺が最も長い荷物 {oid}（模擬の商品・荷姿マスタ）",
                      "per_object": widths, "links": [{"kind": "object", "id": oid}]})
     reqs.append({"id": "reach", "label": "カゴ車の上段・奥まで届く（リーチ）", "kind": "geometry",
                  "value": {"depth_m": cart["depth_m"], "height_m": cart["height_m"]},
@@ -150,25 +150,33 @@ def compute_requirements(job: dict, workflow: dict, objects: list[dict], hw_cata
     mat = {o["object_id"]: attr(o, "material_class") for o in objects}
     soft_nodes = node_link(lambda n: n.get("type") == "decision" and n.get("field") == "material_class")
     if "rigid" in mat.values():
-        cap("grasp_box", "硬い箱がある（模擬荷物マスタ）", soft_nodes, [k for k, v in mat.items() if v == "rigid"])
+        cap("grasp_box", "硬い箱がある（模擬の商品・荷姿マスタ）", soft_nodes, [k for k, v in mat.items() if v == "rigid"])
     bags = [k for k, v in mat.items() if v != "rigid"]
     if bags:
-        cap("grasp_soft_bag", "柔らかいバッグ（または材質が不明な荷物）がある（模擬荷物マスタ）",
+        cap("grasp_soft_bag", "柔らかいバッグ（または材質が不明な荷物）がある（模擬の商品・荷姿マスタ）",
             soft_nodes + rule_link("no_stack_last"), bags)
     if "brick_pattern" in rules:
         cap("rotate_90", "レンガ積み（業務の規則）で箱の向きを変える", rule_link("brick_pattern"))
     no_press = node_link(lambda n: n.get("type") == "skill" and n.get("parameters", {}).get("press_mode") == "no_press")
     if no_press:
         cap("place_no_press", "押し込まずに置く動作がある（ワークフロー）", no_press)
-    cap("mobility", "仮置き場とカゴ車が離れている", [])
+    floor = (job.get("work_area") or {}).get("floor", "flat")
+    if floor == "step":
+        reqs.append({"id": "mobility", "label": caps["mobility"], "kind": "capability", "terrain": "step", "links": [],
+                     "basis": "仮置き場とカゴ車が離れていて、パレットゾーンとカゴ車ゾーンの間に段差がある（環境マスタの作業エリア）"})
+    else:
+        cap("mobility", "仮置き場とカゴ車が離れている", [])
     cap("sense_id", "荷物を見分けて、どの荷物かを特定する", node_link(lambda n: n.get("type") == "observe"))
     cap("sense_dims", "置き場所・はみ出しを判断するのに寸法・位置が要る",
         rule_link("brick_pattern", "full_support", "overhang_check", "height_limit"))
+    # 重さは荷姿マスタにあればそれを使う。計測（ロボット側の能力）が要るのは、マスタに重さがない荷物があるときだけ
     weight_rules = rule_link("order_by_weight_desc", "load_limit", "balance_load", "balance_check")
-    if weight_rules:
-        cap("sense_weight", "重い順・積載上限・偏荷重の判断に重さが要る（今回は模擬荷物マスタ）", weight_rules)
+    no_weight = [o["object_id"] for o in objects if o["object_id"] not in weights]
+    if weight_rules and no_weight:
+        cap("sense_weight", f"重い順・積載上限・偏荷重の判断に重さが要るが、荷姿マスタに重さがない荷物がある：{', '.join(no_weight)}",
+            weight_rules, no_weight)
     if soft_nodes:
-        cap("sense_material", "材質で分岐する判断がある（今回は模擬荷物マスタ）", soft_nodes)
+        cap("sense_material", "材質で分岐する判断がある（今回は模擬の商品・荷姿マスタ）", soft_nodes)
     return reqs
 
 
@@ -202,6 +210,18 @@ def check_config(profile: dict, requirements: list[dict], cart: dict) -> dict:
             ok = profile["reach_m"] >= need
             results.append({**r, "status": "ok" if ok else "ng", "provided": f"{profile['reach_m']}m",
                             "detail": f"必要 約{need:.2f}m（肩の高さ{profile['shoulder_height_m']}m）{'≤' if ok else '>'} リーチ {profile['reach_m']}m"})
+        elif r["id"] == "mobility" and r.get("terrain") == "step":
+            # 段差を越えて移動する：車輪の台車は越えられない。二足歩行は越えられる想定だが未確認。固定式は移動できない
+            c = profile["capabilities"].get("mobility", {"status": "unsupported", "label": "該当する部品なし", "by": None})
+            if c.get("by") == "wheeled_base":
+                status, detail = "ng", "不足：車輪の台車は段差を越えられない"
+            elif c["status"] == "unsupported":
+                status, detail = "ng", "不足（移動できる部品がない）"
+            else:
+                status = STATUS_OF[c["status"]]
+                detail = {"ok": "仕様上対応（段差を越えて移動）", "partial": "一部対応", "unknown": "未確認（段差を越える歩行は実機PoCで確かめる）",
+                          "ng": "不足"}[status]
+            results.append({**r, "status": status, "provided": c["label"], "detail": detail, "affected": []})
         else:
             c = profile["capabilities"].get(r["id"], {"status": "unsupported", "label": "該当する部品なし"})
             status = STATUS_OF[c["status"]]

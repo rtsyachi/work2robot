@@ -1,11 +1,12 @@
-// 仮想ロボット実行の3D。Step 3 と同じ製品モデル（A社固定式・B社移動式・C社ヒューマノイド）を、実行トレースの時間軸で動かす。
+// 仮想実行の3D。Step 4 と同じ製品モデル（C社固定式・A社移動式・B社ヒューマノイド）を、実行トレースの時間軸で動かす。
 // 物理シミュレーションではなく、業務ワークフローと選定構成に基づく作業プレビュー。
 import { memo, useEffect, useMemo, useRef } from 'react'
+import { THEME } from '../lib/theme'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import type { JobItem, JobTrace, RobotSummary, Vec3 } from '../types'
-import { type Sample, type Timeline, solveArm } from '../lib/robotTimeline'
+import { type BodyPose, type Sample, type Timeline, STEP_L, footAt, solveArm } from '../lib/robotTimeline'
 import { Beam, Box, Capsule, Cyl, DepthCam, Effector, ForceRing, Humanoid, Paint } from './ProductRender'
 
 const UP = new THREE.Vector3(0, 1, 0)
@@ -192,7 +193,7 @@ type ArmProps = {
   spread?: number
 }
 
-/** B社：車輪移動式マニピュレータ（台車ごと通り道を走る） */
+/** A社：車輪移動式マニピュレータ（台車ごと通り道を走る） */
 function MobileRobot({ robot, tip, shoulderY, lamp, spread, railZ }: ArmProps & { railZ: number }) {
   const WH = '#eef0f2', BK = '#1f2328', AC = '#12b886'
   const light = robot.arm === 'arm_light'
@@ -231,7 +232,85 @@ function MobileRobot({ robot, tip, shoulderY, lamp, spread, railZ }: ArmProps & 
   )
 }
 
-/** A社：固定式ステーションアーム（台座は動かない） */
+/** B社：二足歩行ヒューマノイド（HM-2）。手先の目標に向かって歩き、腰を落とし・上体を前傾して両腕で荷物を抱える。
+ *  見た目の動き（歩幅・姿勢）は描画のためのもので、歩行の安定性・把持は検証していない。 */
+function WalkingHumanoid({ robot, tip, lamp, tl, body, holdW }: {
+  robot: RobotSummary; tip: Vec3; lamp: 'hold' | 'check' | 'idle'; tl: Timeline; body: BodyPose; holdW: number
+}) {
+  const MG = '#a3a9b0', DK = '#24272b', AC = '#4dabf7'
+  const railZ = tl.railZ
+  // 体の位置・向きは時間軸から（描画のたびに寄せない）。足は歩数 s に合わせて着地点を固定して運ぶ
+  const { x: bx, yaw } = body
+  const fwd: Vec3 = [Math.sin(yaw), 0, Math.cos(yaw)]
+  const side: Vec3 = [Math.cos(yaw), 0, -Math.sin(yaw)]
+  // 姿勢：手先までの前方距離で上体を前傾、手先の高さで腰を落とす（歩行中は体の上下動を少し）
+  const reachH = Math.max(0, (tip[0] - bx) * fwd[0] + (tip[2] - railZ) * fwd[2])
+  const pitch = Math.max(0, Math.min(0.75, (reachH - 0.45) * 1.3))
+  const TORSO = 0.55
+  const wantShoulder = Math.max(GROUND + 0.95, Math.min(GROUND + 1.45, tip[1] + TOOL + 0.42))
+  const bob = Math.abs(Math.sin((Math.PI * body.s) / STEP_L)) * 0.015
+  const hipY = Math.max(GROUND + 0.55, Math.min(GROUND + 0.92, wantShoulder - TORSO * Math.cos(pitch))) - bob
+  const hip: Vec3 = [bx, hipY, railZ]
+  const shoulderC: Vec3 = [bx + fwd[0] * TORSO * Math.sin(pitch), hipY + TORSO * Math.cos(pitch), railZ + fwd[2] * TORSO * Math.sin(pitch)]
+  // 両腕：左右の肩から、荷物の両側面へ（荷物の向きは体の向きと別に扱い、体の横方向の幅だけ使う）
+  const half = Math.min(0.22, Math.max(0.1, holdW / 2 - 0.02))
+  const L = Math.max(0.42, robot.reach_m / 3.2)
+  const arms = [-1, 1].map((k) => {
+    const sh: Vec3 = [shoulderC[0] + side[0] * 0.22 * k, shoulderC[1], shoulderC[2] + side[2] * 0.22 * k]
+    const target: Vec3 = [tip[0] + side[0] * half * k, tip[1] - 0.06, tip[2] + side[2] * half * k]
+    return { sh, ...solveArm(sh, target, L, L, true) }   // 人の腕と同じく肘は下・後ろへ曲げる
+  })
+  // 脚：股関節から、歩数に合わせて運ぶ足首へ。膝は体の前へ曲げる
+  const legs = ([0, 1] as const).map((f) => {
+    const k = f === 0 ? -1 : 1
+    const ft = footAt(tl, body.s, f)
+    const h: Vec3 = [hip[0] + side[0] * 0.11 * k, hipY, hip[2] + side[2] * 0.11 * k]
+    const ankle: Vec3 = [ft.pos[0], GROUND + 0.1 + ft.pos[1], ft.pos[2]]
+    const d = Math.hypot(h[0] - ankle[0], h[1] - ankle[1], h[2] - ankle[2])
+    const bend = Math.sqrt(Math.max(0, 0.44 * 0.44 - (d / 2) ** 2))
+    const knee: Vec3 = [(h[0] + ankle[0]) / 2 + fwd[0] * bend, (h[1] + ankle[1]) / 2, (h[2] + ankle[2]) / 2 + fwd[2] * bend]
+    return { h, knee, ankle, footYaw: ft.yaw }
+  })
+  return (
+    <group>
+      {legs.map((l, i) => (
+        <group key={i}>
+          <Capsule a={l.h} b={l.knee} r={0.07} c={MG} m={0.75} rough={0.3} />
+          <Capsule a={l.knee} b={l.ankle} r={0.058} c={MG} m={0.75} rough={0.3} />
+          <mesh position={l.knee} castShadow><sphereGeometry args={[0.065, 20, 14]} /><Paint color={DK} metal={0.4} rough={0.4} /></mesh>
+          <group position={[l.ankle[0], l.ankle[1] - 0.06, l.ankle[2]]} rotation={[0, l.footYaw, 0]}>
+            <Box p={[0, 0, 0.05]} s={[0.12, 0.07, 0.26]} c={DK} m={0.3} r={0.5} rad={0.02} />
+          </group>
+        </group>
+      ))}
+      {/* 骨盤と、前傾する上体（胴・頭） */}
+      <group position={hip} rotation={[0, yaw, 0]}>
+        <Box p={[0, 0.04, 0]} s={[0.34, 0.16, 0.2]} c={DK} m={0.35} r={0.45} rad={0.04} />
+        <group rotation={[pitch, 0, 0]}>
+          <Box p={[0, TORSO * 0.62, 0]} s={[0.44, 0.48, 0.25]} c={MG} m={0.75} r={0.3} rad={0.07} />
+          <Box p={[0, TORSO * 0.7, 0.126]} s={[0.34, 0.2, 0.02]} c={DK} m={0.4} r={0.3} rad={0.02} />
+          <Box p={[0, TORSO * 0.7, 0.137]} s={[0.12, 0.012, 0.004]} c={AC} m={0} r={0.3} rad={0.002} />
+          <Cyl p={[0, TORSO + 0.08, 0]} r={0.045} h={0.08} c={DK} m={0.4} rough={0.4} />
+          <Box p={[0, TORSO + 0.22, 0]} s={[0.2, 0.24, 0.22]} c={MG} m={0.75} r={0.3} rad={0.07} />
+          <Box p={[0, TORSO + 0.23, 0.105]} s={[0.17, 0.08, 0.02]} c="#0b0d10" m={0.6} r={0.08} rad={0.02} />
+          {robot.sensors.includes('depth_camera') && <DepthCam p={[0, TORSO + 0.33, 0.1]} />}
+        </group>
+      </group>
+      {arms.map((a, i) => (
+        <group key={i}>
+          <mesh position={a.sh} castShadow><sphereGeometry args={[0.075, 20, 14]} /><Paint color={DK} metal={0.4} rough={0.4} /></mesh>
+          <Capsule a={a.sh} b={a.elbow} r={0.055} c={MG} m={0.75} rough={0.3} />
+          <Capsule a={a.elbow} b={a.wrist} r={0.047} c={MG} m={0.75} rough={0.3} />
+          <Effector id={robot.end_effector} at={a.wrist} rot={[0, a.yaw, 0]} />
+          {robot.sensors.includes('wrist_force_sensor') && <ForceRing p={a.wrist} c={AC} />}
+          <Lamp p={[a.wrist[0], a.wrist[1] + 0.06, a.wrist[2]]} state={lamp} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/** C社：固定式ステーションアーム（台座は動かない） */
 function FixedRobot({ robot, tip, shoulderY, lamp, spread, base }: ArmProps & { base: Vec3 }) {
   const OR = '#e8661c', GR = '#2b2f33', ST = '#8a9096'
   const S: Vec3 = [base[0], shoulderY, base[2]]
@@ -278,7 +357,7 @@ function Item({ it, pos, rotY, color, soft, state, active, checking, tags }: {
   const [w, d, h] = it.dims ?? [0.3, 0.3, 0.3]
   const handedOff = state === 'handed_off'
   const warn = handedOff || checking
-  const emissive = warn ? '#e8590c' : active ? '#4c6ef5' : '#000000'
+  const emissive = warn ? THEME.warn : active ? THEME.teal : '#000000'
   const ei = warn ? 0.45 : active ? 0.05 : 0
   return (
     <group position={pos} rotation={[0, rotY, 0]}>
@@ -406,6 +485,13 @@ export default function Robot3D({ job, sample, tl, colors, soft, caption, camMod
         {tl?.conveyor && <Conveyor {...tl.conveyor} />}
 
         {robot && parts && mode === 'mobile' && <MobileRobot robot={robot} tip={tip} shoulderY={shoulderY} lamp={lamp} spread={spread} railZ={railZ} />}
+        {robot && mode === 'walk' && tl && sample?.body && (() => {
+          // 両手で挟む幅＝体の横方向に見た荷物の幅（荷物の向きと体の向きの差で決める）
+          const d = curItem?.dims, r = curItem ? (sample.items[curItem.object_id]?.rotY ?? 0) : 0
+          const rel = r - sample.body.yaw
+          const w = d ? Math.abs(d[0] * Math.cos(rel)) + Math.abs(d[1] * Math.sin(rel)) : 0.4
+          return <WalkingHumanoid robot={robot} tip={tip} lamp={lamp} tl={tl} body={sample.body} holdW={w} />
+        })()}
         {robot && mode === 'fixed' && tl && <FixedRobot robot={robot} tip={tip} shoulderY={shoulderY} lamp={lamp} spread={spread} base={tl.base} />}
         {robot && parts && mode === 'concept' && (
           // 概念プレビュー：歩行・双腕の運搬は表現しない（静止した姿だけを置く）

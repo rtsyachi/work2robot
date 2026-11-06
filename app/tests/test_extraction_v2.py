@@ -32,6 +32,40 @@ def v2_inputs():
     }
 
 
+def ev(t="ai_hypothesis", ref=""):
+    return [{"type": t, "note": "n", "ref": ref}]
+
+
+def crit(name, how, rules=(), basis="ai_hypothesis", refs=()):
+    return {"name": name, "how": how, "rule_refs": list(rules), "basis": basis, "refs": list(refs)}
+
+
+def process_raw(loops=1, confirmation_ref="P1", area_label="作業エリアを点検する"):
+    """工程の構造（別の呼び出しの出力形式）：ノードはタスクだけ、判断条件は criteria、分岐は辺の label。
+    根拠のない安全確認（Claudeの補完）・積付（繰り返し）・終了前の確認。"""
+    stages = [
+        {"id": "safety", "name": "安全確認", "purpose": "作業前に周囲を確かめる", "role": "other", "basis": "ai_hypothesis",
+         "refs": [], "nodes": [
+             {"id": "area", "label": area_label, "detail": "通路と足元を見る",
+              "criteria": [crit("障害物", "通路や足元に物があれば取り除いてから始める")],
+              "confirmation_refs": [confirmation_ref], "basis": "ai_hypothesis", "refs": []},
+             {"id": "clear", "label": "障害物を取り除く", "detail": "", "criteria": [], "confirmation_refs": [], "basis": "ai_hypothesis", "refs": []},
+             {"id": "go", "label": "作業を始める", "detail": "", "criteria": [], "confirmation_refs": [], "basis": "ai_hypothesis", "refs": []}],
+         "edges": [{"source": "area", "target": "go", "label": ""}, {"source": "area", "target": "clear", "label": "障害物があるとき"}]},
+        *[{"id": f"loading{i}", "name": "荷物の積付", "purpose": "1個ずつ積む", "role": "item_loop", "basis": "video_observation",
+           "refs": ["O3"], "nodes": [], "edges": []} for i in range(loops)],
+        {"id": "final", "name": "終了前の確認", "purpose": "はみ出しと偏りを確かめる", "role": "final_check", "basis": "spoken_instruction",
+         "refs": ["S2"], "nodes": [
+             {"id": "check", "label": "積付状態を確認する", "detail": "",
+              "criteria": [crit("はみ出し", "枠の外に出ていないか見る", ["overhang_check"], "spoken_instruction", ["S2"]),
+                           crit("高さ", "積付高さの上限を超えていないか見る", ["height_limit"], "spoken_instruction", ["S2"])],
+              "confirmation_refs": [], "basis": "spoken_instruction", "refs": ["S2"]}],
+         "edges": []},
+    ]
+    return {"stages": stages, "new_confirmation_items": [
+        {"id": "P1", "kind": "missing_information", "topic": "作業前の安全確認の有無", "detail": "動画に安全確認の場面がない"}]}
+
+
 def flat_v2(rules=None, unsupported=None):
     wf = load("workflow_fixture.json")
     job = load("job_fixture.json")
@@ -49,6 +83,43 @@ def flat_v2(rules=None, unsupported=None):
         "confirmation_items": [],
         "summary": "テスト用",
     }
+
+
+def test_process_structure_is_a_separate_call_attached_to_the_same_result(catalog, v2_inputs):
+    """条件（ワークフロー生成）のあとに構造（工程）を別に作り、同じ結果に加える。繰り返しの工程が1つでない・
+    存在しない確認事項を参照する場合は作り直させる。1つの規則を複数ノードから参照でき、選ばれていない規則は注意。"""
+    from backend.ai import process_structure as ps
+
+    assert "process" not in json.dumps(ex.output_schema(catalog, "v2")["required"])  # 生成の出力形式は変えない
+    client = FakeClient(message(json.dumps(flat_v2())), message(json.dumps(process_raw(loops=0))),
+                        message(json.dumps(process_raw(confirmation_ref="c9"))), message(json.dumps(process_raw())))
+    result = ex.extract_workflow(client, v2_inputs, catalog, scenario="v2")
+    with pytest.raises(ps.ProcessStructureError):  # 2回とも検査に通らない
+        ps.attach(result, client, v2_inputs)
+    assert "item_loop" in client.calls[2]["messages"][-1]["content"]
+    result = ps.attach(result, client, v2_inputs)
+    stages = {s["id"]: s for s in result.process["stages"]}
+    assert stages["safety"]["basis"] == "ai_hypothesis" and stages["safety"]["nodes"][0]["source_evidence"] == [{"type": "ai_hypothesis"}]
+    assert stages["safety"]["nodes"][0]["confirmation_refs"] == ["P1"] and any(c["id"] == "P1" for c in result.confirmation_items)
+    # ノードはすべてタスク。判断条件はタスクの中（criteria）で、規則は判断条件から参照（タスクの rule_refs は和集合）
+    final = stages["final"]["nodes"][0]
+    assert all(n["type"] == "task" for s in stages.values() for n in s["nodes"])
+    assert [c["name"] for c in final["criteria"]] == ["はみ出し", "高さ"] and final["rule_refs"] == ["overhang_check", "height_limit"]
+    assert final["criteria"][0]["source_evidence"] == [{"type": "spoken_instruction", "ref": "S2"}]
+    assert stages["final"]["source_evidence"] == [{"type": "spoken_instruction", "ref": "S2"}]
+    assert result.to_dict()["process"] == result.process and len(result.meta["usage"]) == 2
+    user = client.calls[3]["messages"][0]["content"]
+    assert "業務の条件" in user and "order_by_weight_desc" in user and "S2" in user
+    only = flat_v2(rules=[{"type": "order_by_weight_desc", "note": "重い順", "source_evidence": ev("spoken_instruction", "S2")}])
+    c2 = FakeClient(message(json.dumps(only)), message(json.dumps(process_raw())))
+    r2 = ps.attach(ex.extract_workflow(c2, v2_inputs, catalog, scenario="v2"), c2, v2_inputs)
+    assert any(w["code"] == "rule_not_selected" for w in r2.process["warnings"])
+    # タスク名に判断（〜か）や基準（重い・柔らかい…）が入っていれば作り直させる
+    for label in ("作業エリアに障害物がないか", "重い箱から積む順番を決める"):
+        c3 = FakeClient(message(json.dumps(flat_v2())), message(json.dumps(process_raw(area_label=label))), message(json.dumps(process_raw())))
+        ps.attach(ex.extract_workflow(c3, v2_inputs, catalog, scenario="v2"), c3, v2_inputs)
+        assert "process_task_label" in c3.calls[2]["messages"][-1]["content"], label
+    assert ex.task_label_problem("次に積む荷物を決定する") is None and ex.task_label_problem("カゴ車を点検する") is None
 
 
 def test_v2_schema_and_prompt(catalog):
@@ -104,8 +175,10 @@ def test_rule_without_evidence_is_sent_back_for_repair(catalog, v2_inputs):
 def test_v2_inputs_require_matching_transcript_and_observation(monkeypatch, tmp_path):
     from backend.ai import transcription as tr
 
+    from backend import inputs
     monkeypatch.setattr(tr, "RECORD_DIR", tmp_path / "t")
     monkeypatch.setattr(ob, "RECORD_DIR", tmp_path / "o")
+    monkeypatch.setattr(inputs, "current_video", lambda *a: Path("work_video_v2.mp4"))  # 今の作業動画の結果だけを使う
     with pytest.raises(ex.ExtractionError):
         ex.load_inputs_v2()
     tr.save_transcript({"source_type": "spoken_instruction", "note": "n", "video": "work_video_v2.mp4",

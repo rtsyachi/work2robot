@@ -1,0 +1,232 @@
+{
+  "data": "warehouse_map",
+  "category": "other",
+  "name": "店舗別仕分け・出荷エリア（入力動画v5の倉庫）",
+  "note": "入力動画（v5・CGの模擬作業動画）に映る倉庫の簡易な平面図。設備の有無と相対的な位置関係は動画で確認したもの（basis=observed）。寸法・座標・動画に映らない範囲は推測による模擬（dims=mock・basis=mock）で、実在の現場の採寸ではない。将来は仮想ロボットの実行画面（Step 4）の床・設備の表示にも使う想定。",
+  "units": "m",
+  "origin": "左奥の壁の角を原点に、x＝右方向、y＝手前方向の平面図（上から見た図）",
+  "size": [
+    12.0,
+    9.0
+  ],
+  "source": "materials/input_video_v5.mp4（0:01・2:00 などの場面）",
+  "elements": [
+    {
+      "id": "wall_back",
+      "kind": "wall",
+      "label": "奥の壁",
+      "rect": [
+        0.0,
+        0.0,
+        12.0,
+        0.15
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "sign",
+      "kind": "sign",
+      "label": "看板「店舗別仕分け・出荷」",
+      "rect": [
+        4.3,
+        0.18,
+        1.8,
+        0.12
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "shelf_1",
+      "kind": "shelf",
+      "label": "商品棚1（3段）",
+      "rect": [
+        2.4,
+        0.35,
+        2.4,
+        0.6
+      ],
+      "basis": "observed",
+      "dims": "mock",
+      "note": "段ボール箱が並ぶ棚"
+    },
+    {
+      "id": "shelf_2",
+      "kind": "shelf",
+      "label": "商品棚2（3段）",
+      "rect": [
+        5.2,
+        0.35,
+        2.4,
+        0.6
+      ],
+      "basis": "observed",
+      "dims": "mock",
+      "note": "段ボール箱が並ぶ棚"
+    },
+    {
+      "id": "desk",
+      "kind": "desk",
+      "label": "作業台（端末）",
+      "rect": [
+        0.6,
+        1.4,
+        1.2,
+        0.6
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "stairs",
+      "kind": "stairs",
+      "label": "階段",
+      "rect": [
+        10.2,
+        0.2,
+        1.6,
+        3.2
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "work_area",
+      "kind": "work_area",
+      "label": "作業エリア",
+      "rect": [
+        1.4,
+        2.1,
+        6.6,
+        4.0
+      ],
+      "basis": "mock",
+      "dims": "mock",
+      "note": "パレットとカゴ車の間で作業者が動く範囲。左がパレットゾーン、右がカゴ車ゾーン。床に境界の表示はなく、範囲は推測"
+    },
+    {
+      "id": "zone_pallet",
+      "kind": "zone_pallet",
+      "label": "パレットゾーン",
+      "rect": [
+        1.55,
+        2.5,
+        3.9,
+        3.45
+      ],
+      "basis": "mock",
+      "dims": "mock",
+      "note": "作業エリアの左側。荷物を載せたパレット（仮置き場）を置く範囲（推測）"
+    },
+    {
+      "id": "zone_cart",
+      "kind": "zone_cart",
+      "label": "カゴ車ゾーン",
+      "rect": [
+        5.65,
+        2.5,
+        2.2,
+        3.45
+      ],
+      "basis": "mock",
+      "dims": "mock",
+      "note": "作業エリアの右側。積付先のカゴ車を置く範囲（推測）"
+    },
+    {
+      "id": "step_edge",
+      "kind": "step",
+      "label": "段差（パレットゾーンとカゴ車ゾーンの境）",
+      "rect": [
+        5.47,
+        2.5,
+        0.16,
+        3.45
+      ],
+      "basis": "mock",
+      "dims": "mock",
+      "note": "デモ用の模擬の設定（動画では確認していない）。車輪の台車は越えられない想定"
+    },
+    {
+      "id": "pallet_1",
+      "kind": "staging",
+      "label": "仮置き場：パレット1（奥）",
+      "rect": [
+        1.9,
+        2.9,
+        1.1,
+        1.0
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "pallet_2",
+      "kind": "staging",
+      "label": "仮置き場：パレット2（中央）",
+      "rect": [
+        3.7,
+        3.5,
+        1.1,
+        1.0
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "pallet_3",
+      "kind": "staging",
+      "label": "仮置き場：パレット3（手前）",
+      "rect": [
+        1.9,
+        4.6,
+        1.1,
+        1.0
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "cart",
+      "kind": "cart",
+      "label": "カゴ車（cart_std）",
+      "rect": [
+        6.25,
+        3.7,
+        1.0,
+        0.75
+      ],
+      "basis": "observed",
+      "dims": "master",
+      "note": "置き場所は動画で確認。大きさはカゴ車マスタの内寸（1.0×0.75m）"
+    },
+    {
+      "id": "lane_line",
+      "kind": "line",
+      "label": "黄色の区画線",
+      "rect": [
+        0.0,
+        6.25,
+        9.0,
+        0.08
+      ],
+      "basis": "observed",
+      "dims": "mock"
+    },
+    {
+      "id": "walkway",
+      "kind": "aisle",
+      "label": "通路（緑の床）",
+      "rect": [
+        0.0,
+        6.5,
+        9.0,
+        1.4
+      ],
+      "basis": "observed",
+      "dims": "mock",
+      "note": "手前の緑の床。動画では斜めに通るが、平面図では簡略化"
+    }
+  ],
+  "relation_to_masters": "作業エリアの左がパレットゾーン（仮置き場）、右がカゴ車ゾーン。仮想実行の仮置き場の位置は環境マスタの値で計算する（この画面では編集しない）。動画のパレットは3台だが、仮想実行の仮置き場は2列で一致していない（確認事項）。"
+}

@@ -48,7 +48,8 @@ export default function VideoPane({ src, range, follow, missingNote, seek, muted
 
   return (
     <div className="pane-video" data-testid="video-pane">
-      <div className="pane-title">{title ?? '人の作業（入力動画：デモ用模擬作業動画）'}</div>
+      {/* title='' なら動画の上に見出しを重ねない（呼び出し側で動画の外に出す） */}
+      {title !== '' && <div className="pane-title">{title ?? '人の作業（入力動画：デモ用模擬作業動画）'}</div>}
       <video ref={ref} src={src} muted={muted} controls playsInline data-testid="work-video" />
       {missingNote && <div className="video-note" data-testid="video-note">{missingNote}</div>}
     </div>

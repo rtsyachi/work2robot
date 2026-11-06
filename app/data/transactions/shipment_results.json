@@ -1,0 +1,161 @@
+{
+  "data": "shipment_results",
+  "category": "transaction",
+  "note": "出荷実績（トランザクション、模擬）。出荷予定どおりに積んで出荷した記録を、出荷明細と同じ形（出荷日・出荷ID・商品・数量＝ケース数）で持つ。デモ用の架空の値で、実在の出荷データではない。参照のみで、画面では編集しない。",
+  "results": [
+    {
+      "result_id": "R-20261105-01",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "L1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-02",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "H1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-03",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "M",
+      "quantity": 6
+    },
+    {
+      "result_id": "R-20261105-04",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "S1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-05",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "H2",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-06",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "L2",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-07",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "H3",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-08",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "W1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-09",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "H4",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-10",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "L3",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-11",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "W2",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261105-12",
+      "shipped_on": "2026-11-05",
+      "shipment_id": "video_batch",
+      "product_id": "S2",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-01",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "M",
+      "quantity": 4
+    },
+    {
+      "result_id": "R-20261104-02",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "U1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-03",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "H2",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-04",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "S1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-05",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "L1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-06",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "H1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-07",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "W1",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-08",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "L2",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-09",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "S2",
+      "quantity": 1
+    },
+    {
+      "result_id": "R-20261104-10",
+      "shipped_on": "2026-11-04",
+      "shipment_id": "alt_batch",
+      "product_id": "H3",
+      "quantity": 1
+    }
+  ]
+}
