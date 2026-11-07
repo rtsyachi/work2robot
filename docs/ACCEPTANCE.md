@@ -196,9 +196,9 @@
 - シミュレーション実行：シナリオ・ワークフロー・構成がそろい、対応不可が0件のときだけ実行できる（HM-1 はリーチ対応不可で実行不可のエラー）。HM-2 は17個すべて仮想配置。ヒューマノイドの3Dは決定的な歩行のタイムライン（足の接地・旋回、肘は下に曲げる）
 - シミュレーション評価：シミュレーションサマリ（主要所見・効果見通し・残存課題）→ KPI → 定量評価（工程ごと）・課題・改善余地（評価観点ごと）
 - ワークフロー確認：業務の要約（折りたたみ）、工程ごとの「確認・修正」、判断条件の修正・削除、確認事項の消込（scenario.json の resolved_confirmations）
-- 提出動画：materials/demo/demo_no_voiceover.mp4（177.03秒・1920×1080・30fps・H.264/AAC。作業者の音声のみ、発表ナレーションは未収録）。台本は docs/DEMO.md、品質確認は materials/demo/qa_report.md
+- 提出動画：materials/demo/demo_with_narration.mp4（169.0秒・1920×1080・30fps・H.264/AAC）。ナレーションは AivisSpeech（音声モデル Lux・ACML 1.0）で全編を合成し、入力動画の元の音声は使わない。全場面が時間内に収まり、文の間と S07 後半（約10秒）は無音（−91 dB）、音量 −16.6 LUFS。発音は1文ごとにローカルの文字起こしで照合（26文中24文が一致、「レンガ積み」「Claude（文中）」は聞き取りが不安定）。台本は docs/DEMO.md、確認は materials/demo/narration_qa.md（qa_narrated.py）
 証拠：local_media/demo_build/shots/*.png（実画面）、local_media/ui_check/hm2_turn_after.mp4・hm2_elbow_after.mp4、materials/demo/scene_manifest.json
-残る問題・次の修正：発表ナレーションの収録と合成（tools/demo_video/mix_voiceover.py）。HM-2 の全編動画（step4_recommended.mp4）は撮り直していない。使わなくなった app/data/masters/item_master.json・transactions/shipments.json は削除していない。上の過去の記録（AW-40F の推奨・RM-10 の部分実行など）はその日時点の記録として残す
+残る問題・次の修正：提出動画のナレーションは耳での試聴が未実施（とくに「レンガ積み」と S07 の「Claude」）。HM-2 の全編動画（step4_recommended.mp4）は撮り直していない。使わなくなった app/data/masters/item_master.json・transactions/shipments.json は削除していない。上の過去の記録（AW-40F の推奨・RM-10 の部分実行など）はその日時点の記録として残す
 ```
 
 **禁止：** 固定動画での作業を、実際の分岐エンジンによる動的な実行と誤認させない。成功率・稼働時間・安全性の値を作らない。

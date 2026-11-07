@@ -163,7 +163,7 @@ work2robot/
 │   ├── eval/                 評価用の期待結果（アプリの入力経路からは読まない）
 │   ├── scripts/              解析・評価をコマンドで実行するスクリプト
 │   └── tests/                バックエンドのテスト（pytest）
-├── tools/demo_video/         入力用の模擬作業動画の生成と、提出動画の組み立て（build_demo.py）・ナレーション合成（mix_voiceover.py）
+├── tools/demo_video/         入力用の模擬作業動画の生成と、提出動画の制作（AivisSpeech によるナレーション narration_aivis.py → 組み立て build_demo.py --narrated → 確認 qa_narrated.py）
 └── .claude/                  Claude Code 用のルール（rules/）と検証手順（skills/demo-audit）
 ```
 

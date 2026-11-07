@@ -104,6 +104,19 @@ SCENES = [
     ]),
 ]
 
+# ナレーション版（--narrated）：入力動画の元の音声は使わず、AivisSpeech の発表ナレーション（narration_aivis.py）を全編に入れる。
+# S02 は発表ナレーションの文に合わせて、判断の場面（重い箱・レンガ積み・柔らかいバッグ）を等速で並べ直す。
+NARRATED = "--narrated" in sys.argv
+NARRATED_S02 = [
+    # 2026-11-07 改訂：冒頭の2文（「実際の作業を見ていきましょう」「現場では、人が…」）の間は2倍速で作業全体を見せる
+    dict(kind="video", start=0.0, end=8.8, speed=2, audio=False, label="早送り 2×　元動画 0:00〜0:09", ff=True),
+    dict(kind="video", start=9.0, end=15.0, speed=1, audio=False, label="元動画 0:09〜0:15　等速", chip="重い箱は下に、重心を低く"),
+    dict(kind="video", start=72.0, end=77.6, speed=1, audio=False, label="元動画 1:12〜1:18　等速", chip="同じ大きさの箱はレンガ積み"),
+    dict(kind="video", start=169.5, end=175.5, speed=1, audio=False, label="元動画 2:49〜2:55　等速", chip="柔らかいバッグは最後に一番上"),
+]
+NARRATION_DIR = REPO / "materials/demo/narration"
+INTRO_SEC_NARRATED = 7.0   # 2026-11-07：導入を15秒→7秒に短縮（全体169秒。narration_aivis.py の SCENE_TIMES と同じ）
+
 # 作業者の発話（v5 の文字起こし local_media/transcripts/transcript_20261106_112317.json より）
 WORKER_SPEECH = [
     (9.2, 15.0, "重い箱はなるべく下に置いて、全体の重心が低くなるようにしています。"),
@@ -341,6 +354,15 @@ def main():
         d.mkdir(parents=True)
     OUT.mkdir(parents=True, exist_ok=True)
     assert (SHOTS / "s9_issues.png").exists() and (FRAMES / "s7_00842.png").exists(), "先に demo_capture.mjs で画面を撮る"
+    if NARRATED:
+        assert (NARRATION_DIR / "subtitles.json").exists(), "先に narration_aivis.py でナレーションを作る"
+        SCENES[0]["segs"][0].update(dur=INTRO_SEC_NARRATED, zoom=dict(cx=960, cy=540, z=1.04, t=INTRO_SEC_NARRATED))
+        SCENES[1]["segs"] = NARRATED_S02
+        NOTICE["video"] = "模擬作業動画（CGアニメーション）・アプリの入力動画（元の音声は使っていません）"
+        for sc in SCENES:
+            for seg in sc["segs"]:
+                if seg["kind"] == "video":
+                    seg["audio"] = False
 
     # 1) セグメントを描画
     t = 0.0
@@ -383,6 +405,8 @@ def main():
                             tt += d
     narr_subs, cues = [], []
     for sc in SCENES:
+        if NARRATED:   # ナレーション版の時刻・長さは narration_aivis.py が検査する
+            continue
         if sc["vo"]:
             a = sc["start"] + sc["vo_at"]
             need = len(sc["vo"]) / CPS
@@ -404,19 +428,33 @@ def main():
                 fs.append(dt(text, "(w-text_w)/2", 984, 40, color, enable=en))
         return fs
 
-    def burn(items_filters, out_file):
+    def burn(items_filters, out_file, audio=None):
         g = ",".join(["[0:v]null", *items_filters]) + "[v]"
         gf = BUILD / "graph_subs.txt"
         gf.write_text(g, encoding="utf-8")
-        run(["-i", joined.name, "-filter_complex_script", gf.name, "-map", "[v]", "-map", "0:a",
+        ain = ["-i", str(audio)] if audio else []
+        run(["-i", joined.name, *ain, "-filter_complex_script", gf.name, "-map", "[v]", "-map", "1:a" if audio else "0:a",
              "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-r", str(FPS), "-profile:v", "high",
-             "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", str(out_file)])
+             "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "-t", f"{total:.3f}", str(out_file)])
 
-    wf = sub_filters(worker_subs, prefix="作業者：", color="0xBDF5E8")
-    burn(wf, OUT / "demo_no_voiceover.mp4")
-    burn(wf + sub_filters(narr_subs), OUT / "demo_guide_with_narration_subs.mp4")
+    if NARRATED:
+        nar = json.loads((NARRATION_DIR / "subtitles.json").read_text(encoding="utf-8"))
+        nsubs = [(s["start"], s["end"], s["text"]) for s in nar["subtitles"]]
+        burn(sub_filters(nsubs), OUT / "demo_with_narration.mp4", audio=NARRATION_DIR / "narration_full.wav")
+        srt = [f"{k}\n{srt_time(a)} --> {srt_time(b)}\n{x}\n" for k, (a, b, x) in enumerate(nsubs, 1)]
+        (OUT / "narration_final.srt").write_text("\n".join(srt), encoding="utf-8")
+    else:
+        wf = sub_filters(worker_subs, prefix="作業者：", color="0xBDF5E8")
+        burn(wf, OUT / "demo_no_voiceover.mp4")
+        burn(wf + sub_filters(narr_subs), OUT / "demo_guide_with_narration_subs.mp4")
 
     # 4) 字幕ファイル・キュー表・マニフェスト
+    if not NARRATED:
+        write_guide_files(narr_subs, worker_subs, cues)
+    write_manifest(total, worker_subs)
+
+
+def write_guide_files(narr_subs, worker_subs, cues):
     srt = []
     for k, (a, b, text) in enumerate(sorted(narr_subs + [(a, b, "作業者：" + x) for a, b, x in worker_subs]), 1):
         srt.append(f"{k}\n{srt_time(a)} --> {srt_time(b)}\n{text}\n")
@@ -438,11 +476,13 @@ def main():
                         "" if not c["vo"] else f"{c['limit']:.2f}", "" if not c["vo"] else f"{c['chars'] / CPS:.1f}",
                         c["text"], f"vo_{c['scene_id']}.wav" if c["vo"] else "", note])
 
+
+def write_manifest(total, worker_subs):
     def seg_manifest(seg):
         m = dict(kind=seg["kind"], edited_start=round(seg["t0"], 3), edited_end=round(seg["t1"], 3))
         if seg["kind"] == "video":
             m.update(source="materials/input_video_v5.mp4", source_start=seg["start"], source_end=seg["end"], speed=seg["speed"],
-                     audio="作業者の説明音声（元動画）" if seg["audio"] else "無音（早送り）", label=seg["label"], callout=seg.get("chip"),
+                     audio="作業者の説明音声（元動画）" if seg["audio"] else "元の音声は使わない（ミュート）", label=seg["label"], callout=seg.get("chip"),
                      time_map=dict(formula="edited = edited_start + (source - source_start) / speed"))
         elif seg["kind"] == "still":
             m.update(source="materials/intro_title.png" if seg["src"] == "intro" else f"local_media/demo_build/shots/{seg['src']}.png", audio="無音",
@@ -460,6 +500,20 @@ def main():
             m.update(source="materials/work2robot.png", audio="無音")
         return m
 
+    if NARRATED:
+        nar = json.loads((NARRATION_DIR / "subtitles.json").read_text(encoding="utf-8"))
+        narration = {k: [dict(text=s["disp"], speak=s["speak"], start=round(s["start"], 3), end=round(s["end"], 3)) for s in v]
+                     for k, v in nar["sentences"].items()}
+        manifest = dict(
+            output="materials/demo/demo_with_narration.mp4", duration_sec=round(total, 3), resolution="1920x1080", fps=FPS,
+            layout=dict(content_box=[OX, OY, CW, CH], subtitle_band="y=962〜1080（ナレーション字幕）"),
+            audio=f"発表ナレーションのみ（AivisSpeech・{nar['voice']['name']}・話速{nar['speed']}）。入力動画の元の音声・BGMは使っていない",
+            scenes=[dict(id=sc["id"], name=sc["name"], start=round(sc["start"], 3), end=round(sc["end"], 3),
+                         narration=narration.get(sc["id"]), segments=[seg_manifest(s) for s in sc["segs"]]) for sc in SCENES],
+        )
+        (OUT / "scene_manifest_narrated.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"total {total:.2f}s")
+        return
     manifest = dict(
         output="materials/demo/demo_no_voiceover.mp4", duration_sec=round(total, 3), resolution="1920x1080", fps=FPS,
         layout=dict(content_box=[OX, OY, CW, CH], subtitle_band="y=962〜1080（字幕・注記用に空けている）"),
